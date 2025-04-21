@@ -1,6 +1,5 @@
 import { Transaction, VersionedTransaction, CompileV0Args, TransactionInstruction, Keypair, Connection, SendOptions, PublicKey, AddressLookupTableAccount } from '@solana/web3.js';
 import { TransactionRequest, Signer, Overrides, TransactionResponse, ethers } from 'ethers';
-import { Buffer as Buffer$1 } from 'buffer';
 
 type ChainName = 'solana' | 'ethereum' | 'bsc' | 'polygon' | 'avalanche' | 'arbitrum' | 'optimism' | 'base' | 'aptos' | 'sui' | 'unichain' | 'linea';
 type TokenStandard = 'native' | 'erc20' | 'spl' | 'spl2022' | 'suicoin';
@@ -374,7 +373,7 @@ type SolanaClientSwapInstructions = {
     addressLookupTableAddresses: string[];
 };
 declare function decentralizeClientSwapInstructions(params: SolanaClientSwap, connection: Connection): SolanaClientSwapInstructions;
-declare function getAnchorInstructionData(name: string): Buffer$1;
+declare function getAnchorInstructionData(name: string): Buffer;
 declare function decideRelayer(): Promise<PublicKey>;
 declare function getJitoTipTransfer(swapper: string, blockhash: string, lastValidBlockHeight: number, options: JitoBundleOptions): Transaction;
 declare function sendJitoBundle(singedTrxs: Array<Transaction | VersionedTransaction>, options: JitoBundleOptions, forceToBeSubmitted?: boolean): Promise<any>;
@@ -412,7 +411,7 @@ declare function createMctpFromSolanaInstructions(quote: Quote, swapperAddress: 
     swapMessageV0Params: SwapMessageV0Params | null;
 }>;
 
-declare function createSwiftOrderHash(quote: Quote, swapperAddress: string, destinationAddress: string, referrerAddress: string | null | undefined, randomKeyHex: string): Buffer$1;
+declare function createSwiftOrderHash(quote: Quote, swapperAddress: string, destinationAddress: string, referrerAddress: string | null | undefined, randomKeyHex: string): Buffer;
 declare function createSwiftFromSolanaInstructions(quote: Quote, swapperAddress: string, destinationAddress: string, referrerAddress: string | null | undefined, connection: Connection, options?: {
     allowSwapperOffCurve?: boolean;
     separateSwapTx?: boolean;

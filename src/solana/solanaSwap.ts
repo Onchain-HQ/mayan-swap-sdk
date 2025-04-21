@@ -32,7 +32,6 @@ import {
 	getSafeU64Blob,
 	getQuoteSuitableReferrerAddress,
 } from '../utils';
-import { Buffer } from 'buffer';
 import addresses from '../addresses';
 import { encodeBase58, ZeroAddress } from 'ethers';
 import { submitSwiftSolanaSwap } from '../api';

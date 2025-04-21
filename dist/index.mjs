@@ -4742,7 +4742,6 @@ import {
   AddressLookupTableAccount,
   ComputeBudgetProgram
 } from "@solana/web3.js";
-import { Buffer as Buffer2 } from "buffer";
 import { blob, struct, u8 } from "@solana/buffer-layout";
 import { encodeBase58, sha256, toUtf8Bytes } from "ethers";
 var cachedConnections = {};
@@ -4826,7 +4825,7 @@ function createAssociatedTokenAccountInstruction(payer, associatedToken, owner, 
   return new TransactionInstruction({
     keys,
     programId: associatedTokenProgramId,
-    data: Buffer2.alloc(0)
+    data: Buffer.alloc(0)
   });
 }
 var TOKEN_ACCOUNT_LEN = 165;
@@ -4853,7 +4852,7 @@ async function createInitializeRandomTokenAccountInstructions(connection, payer,
         { pubkey: SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false }
       ],
       programId,
-      data: Buffer2.from([1])
+      data: Buffer.from([1])
     })
   );
   return instructions;
@@ -4868,7 +4867,7 @@ function createApproveInstruction(account, delegate, owner, amount, programId = 
     { pubkey: delegate, isSigner: false, isWritable: false },
     { pubkey: owner, isSigner: true, isWritable: false }
   ];
-  const data = Buffer2.alloc(ApproveInstructionData.span);
+  const data = Buffer.alloc(ApproveInstructionData.span);
   ApproveInstructionData.encode(
     {
       instruction: 4,
@@ -4881,7 +4880,7 @@ function createApproveInstruction(account, delegate, owner, amount, programId = 
 var SyncNativeInstructionData = struct([u8("instruction")]);
 function createSyncNativeInstruction(account) {
   const keys = [{ pubkey: account, isSigner: false, isWritable: true }];
-  const data = Buffer2.alloc(SyncNativeInstructionData.span);
+  const data = Buffer.alloc(SyncNativeInstructionData.span);
   SyncNativeInstructionData.encode({ instruction: 17 }, data);
   return new TransactionInstruction({
     keys,
@@ -4896,7 +4895,7 @@ function createCloseAccountInstruction(account, destination, owner, programId = 
     { pubkey: destination, isSigner: false, isWritable: true },
     { pubkey: owner, isSigner: true, isWritable: false }
   ];
-  const data = Buffer2.alloc(CloseAccountInstructionData.span);
+  const data = Buffer.alloc(CloseAccountInstructionData.span);
   CloseAccountInstructionData.encode(
     {
       instruction: 9
@@ -4915,7 +4914,7 @@ function createSplTransferInstruction(source, destination, owner, amount, progra
     { pubkey: destination, isSigner: false, isWritable: true },
     { pubkey: owner, isSigner: true, isWritable: false }
   ];
-  const data = Buffer2.alloc(SplTransferInstructionData.span);
+  const data = Buffer.alloc(SplTransferInstructionData.span);
   SplTransferInstructionData.encode(
     {
       instruction: 3,
@@ -5011,7 +5010,7 @@ function deserializeInstructionInfo(instruction) {
       isSigner: key.isSigner,
       isWritable: key.isWritable
     })),
-    data: Buffer2.from(instruction.data, "base64")
+    data: Buffer.from(instruction.data, "base64")
   });
 }
 async function getAddressLookupTableAccounts(keys, connection) {
@@ -5045,7 +5044,7 @@ function decentralizeClientSwapInstructions(params, connection) {
 }
 function getAnchorInstructionData(name) {
   let preimage = `global:${name}`;
-  return Buffer2.from(sha256(toUtf8Bytes(preimage))).subarray(0, 8);
+  return Buffer.from(sha256(toUtf8Bytes(preimage))).subarray(0, 8);
 }
 async function decideRelayer() {
   let relayer;
@@ -5318,7 +5317,6 @@ import {
   VersionedTransaction as VersionedTransaction2
 } from "@solana/web3.js";
 import { blob as blob4, struct as struct4, u16 as u163, u8 as u84 } from "@solana/buffer-layout";
-import { Buffer as Buffer5 } from "buffer";
 import { encodeBase58 as encodeBase582, ZeroAddress as ZeroAddress3 } from "ethers";
 
 // src/solana/solanaMctp.ts
@@ -5332,7 +5330,6 @@ import {
   ComputeBudgetProgram as ComputeBudgetProgram2
 } from "@solana/web3.js";
 import { blob as blob2, struct as struct2, u16, u8 as u82 } from "@solana/buffer-layout";
-import { Buffer as Buffer3 } from "buffer";
 
 // src/wormhole.ts
 import { PublicKey as PublicKey4 } from "@solana/web3.js";
@@ -5364,9 +5361,7 @@ function getWormholePDAs(supplierProgram) {
 }
 
 // src/solana/solanaMctp.ts
-var MCTPBridgeWithFeeLayout = struct2([
-  blob2(8, "instruction")
-]);
+var MCTPBridgeWithFeeLayout = struct2([blob2(8, "instruction")]);
 function createMctpBridgeWithFeeInstruction(ledger, toChain, mintAddress, relayerAddress, feeSolana) {
   const wormholeProgramId = new PublicKey5(addresses_default.WORMHOLE_PROGRAM_ID);
   const TOKEN_PROGRAM_ID = new PublicKey5(addresses_default.TOKEN_PROGRAM_ID);
@@ -5375,11 +5370,7 @@ function createMctpBridgeWithFeeInstruction(ledger, toChain, mintAddress, relaye
   const mctpProgram = new PublicKey5(addresses_default.MCTP_PROGRAM_ID);
   const relayer = new PublicKey5(relayerAddress);
   const mint = new PublicKey5(mintAddress);
-  const ledgerAccount = getAssociatedTokenAddress(
-    mint,
-    ledger,
-    true
-  );
+  const ledgerAccount = getAssociatedTokenAddress(mint, ledger, true);
   let relayerAccount;
   if (feeSolana && feeSolana > BigInt(0)) {
     relayerAccount = getAssociatedTokenAddress(mint, relayer, false);
@@ -5396,13 +5387,33 @@ function createMctpBridgeWithFeeInstruction(ledger, toChain, mintAddress, relaye
     { pubkey: relayer, isWritable: true, isSigner: true },
     { pubkey: relayerAccount, isWritable: true, isSigner: false },
     { pubkey: mint, isWritable: true, isSigner: false },
-    { pubkey: cctpBridgePdas.senderAuthority, isWritable: false, isSigner: false },
-    { pubkey: cctpBridgePdas.tokenMessenger, isWritable: false, isSigner: false },
-    { pubkey: cctpBridgePdas.remoteTokenMessengerKey, isWritable: false, isSigner: false },
+    {
+      pubkey: cctpBridgePdas.senderAuthority,
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: cctpBridgePdas.tokenMessenger,
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: cctpBridgePdas.remoteTokenMessengerKey,
+      isWritable: false,
+      isSigner: false
+    },
     { pubkey: cctpBridgePdas.tokenMinter, isWritable: false, isSigner: false },
     { pubkey: cctpBridgePdas.localToken, isWritable: true, isSigner: false },
-    { pubkey: cctpBridgePdas.eventAuthToken, isWritable: false, isSigner: false },
-    { pubkey: cctpBridgePdas.messageTransmitter, isWritable: true, isSigner: false },
+    {
+      pubkey: cctpBridgePdas.eventAuthToken,
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: cctpBridgePdas.messageTransmitter,
+      isWritable: true,
+      isSigner: false
+    },
     { pubkey: cctpMessage.publicKey, isWritable: true, isSigner: true },
     { pubkey: cctpTokenProgramId, isWritable: false, isSigner: false },
     { pubkey: cctpCoreProgramId, isWritable: false, isSigner: false },
@@ -5417,7 +5428,7 @@ function createMctpBridgeWithFeeInstruction(ledger, toChain, mintAddress, relaye
     { pubkey: TOKEN_PROGRAM_ID, isWritable: false, isSigner: false },
     { pubkey: SystemProgram4.programId, isWritable: false, isSigner: false }
   ];
-  const data = Buffer3.alloc(MCTPBridgeWithFeeLayout.span);
+  const data = Buffer.alloc(MCTPBridgeWithFeeLayout.span);
   MCTPBridgeWithFeeLayout.encode(
     {
       instruction: getAnchorInstructionData("bridge_with_fee")
@@ -5431,27 +5442,27 @@ function createMctpBridgeWithFeeInstruction(ledger, toChain, mintAddress, relaye
   });
   return { instruction: bridgeIns, signers: [cctpMessage, wormholeMessage] };
 }
-var MctpBridgeLockFeeLayout = struct2([
-  blob2(8, "instruction")
-]);
+var MctpBridgeLockFeeLayout = struct2([blob2(8, "instruction")]);
 function createMctpBridgeLockFeeInstruction(ledger, toChain, mintAddress, relayerAddress, feeSolana) {
   const instructions = [];
   const TOKEN_PROGRAM_ID = new PublicKey5(addresses_default.TOKEN_PROGRAM_ID);
-  const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey5(addresses_default.ASSOCIATED_TOKEN_PROGRAM_ID);
+  const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey5(
+    addresses_default.ASSOCIATED_TOKEN_PROGRAM_ID
+  );
   const cctpCoreProgramId = new PublicKey5(addresses_default.CCTP_CORE_PROGRAM_ID);
   const cctpTokenProgramId = new PublicKey5(addresses_default.CCTP_TOKEN_PROGRAM_ID);
   const mctpProgram = new PublicKey5(addresses_default.MCTP_PROGRAM_ID);
   const relayer = new PublicKey5(relayerAddress);
   const mint = new PublicKey5(mintAddress);
-  const ledgerAccount = getAssociatedTokenAddress(
-    mint,
-    ledger,
-    true
-  );
+  const ledgerAccount = getAssociatedTokenAddress(mint, ledger, true);
   const cctpBridgePdas = getCCTPBridgePDAs(mint, toChain);
   const cctpMessage = Keypair2.generate();
   const [feeState] = PublicKey5.findProgramAddressSync(
-    [Buffer3.from("LOCKED_FEE"), mint.toBuffer(), cctpMessage.publicKey.toBytes()],
+    [
+      Buffer.from("LOCKED_FEE"),
+      mint.toBuffer(),
+      cctpMessage.publicKey.toBytes()
+    ],
     mctpProgram
   );
   let relayerAccount;
@@ -5460,17 +5471,15 @@ function createMctpBridgeLockFeeInstruction(ledger, toChain, mintAddress, relaye
   } else {
     relayerAccount = new PublicKey5(addresses_default.MCTP_PROGRAM_ID);
   }
-  const feeStateAccount = getAssociatedTokenAddress(
-    mint,
-    feeState,
-    true
+  const feeStateAccount = getAssociatedTokenAddress(mint, feeState, true);
+  instructions.push(
+    createAssociatedTokenAccountInstruction(
+      relayer,
+      feeStateAccount,
+      feeState,
+      mint
+    )
   );
-  instructions.push(createAssociatedTokenAccountInstruction(
-    relayer,
-    feeStateAccount,
-    feeState,
-    mint
-  ));
   const accounts = [
     { pubkey: ledger, isWritable: true, isSigner: false },
     { pubkey: ledgerAccount, isWritable: true, isSigner: false },
@@ -5479,13 +5488,33 @@ function createMctpBridgeLockFeeInstruction(ledger, toChain, mintAddress, relaye
     { pubkey: feeState, isWritable: true, isSigner: false },
     { pubkey: feeStateAccount, isWritable: true, isSigner: false },
     { pubkey: mint, isWritable: true, isSigner: false },
-    { pubkey: cctpBridgePdas.senderAuthority, isWritable: false, isSigner: false },
-    { pubkey: cctpBridgePdas.tokenMessenger, isWritable: false, isSigner: false },
-    { pubkey: cctpBridgePdas.remoteTokenMessengerKey, isWritable: false, isSigner: false },
+    {
+      pubkey: cctpBridgePdas.senderAuthority,
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: cctpBridgePdas.tokenMessenger,
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: cctpBridgePdas.remoteTokenMessengerKey,
+      isWritable: false,
+      isSigner: false
+    },
     { pubkey: cctpBridgePdas.tokenMinter, isWritable: false, isSigner: false },
     { pubkey: cctpBridgePdas.localToken, isWritable: true, isSigner: false },
-    { pubkey: cctpBridgePdas.eventAuthToken, isWritable: false, isSigner: false },
-    { pubkey: cctpBridgePdas.messageTransmitter, isWritable: true, isSigner: false },
+    {
+      pubkey: cctpBridgePdas.eventAuthToken,
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: cctpBridgePdas.messageTransmitter,
+      isWritable: true,
+      isSigner: false
+    },
     { pubkey: cctpMessage.publicKey, isWritable: true, isSigner: true },
     { pubkey: cctpTokenProgramId, isWritable: false, isSigner: false },
     { pubkey: cctpCoreProgramId, isWritable: false, isSigner: false },
@@ -5493,7 +5522,7 @@ function createMctpBridgeLockFeeInstruction(ledger, toChain, mintAddress, relaye
     { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isWritable: false, isSigner: false },
     { pubkey: SystemProgram4.programId, isWritable: false, isSigner: false }
   ];
-  const data = Buffer3.alloc(MctpBridgeLockFeeLayout.span);
+  const data = Buffer.alloc(MctpBridgeLockFeeLayout.span);
   MctpBridgeLockFeeLayout.encode(
     {
       instruction: getAnchorInstructionData("bridge_locked_fee")
@@ -5508,9 +5537,7 @@ function createMctpBridgeLockFeeInstruction(ledger, toChain, mintAddress, relaye
   instructions.push(bridgeIns);
   return { instructions, signer: cctpMessage };
 }
-var MctpInitSwapLayout = struct2([
-  blob2(8, "instruction")
-]);
+var MctpInitSwapLayout = struct2([blob2(8, "instruction")]);
 function createMctpInitSwapInstruction(ledger, toChain, mintAddress, relayerAddress, feeSolana) {
   const TOKEN_PROGRAM_ID = new PublicKey5(addresses_default.TOKEN_PROGRAM_ID);
   const cctpCoreProgramId = new PublicKey5(addresses_default.CCTP_CORE_PROGRAM_ID);
@@ -5518,15 +5545,11 @@ function createMctpInitSwapInstruction(ledger, toChain, mintAddress, relayerAddr
   const mctpProgram = new PublicKey5(addresses_default.MCTP_PROGRAM_ID);
   const relayer = new PublicKey5(relayerAddress);
   const mint = new PublicKey5(mintAddress);
-  const ledgerAccount = getAssociatedTokenAddress(
-    mint,
-    ledger,
-    true
-  );
+  const ledgerAccount = getAssociatedTokenAddress(mint, ledger, true);
   const cctpBridgePdas = getCCTPBridgePDAs(mint, toChain);
   const cctpMessage = Keypair2.generate();
   const [swapState] = PublicKey5.findProgramAddressSync(
-    [Buffer3.from("ORDER_SOLANA_SOURCE"), ledger.toBuffer()],
+    [Buffer.from("ORDER_SOLANA_SOURCE"), ledger.toBuffer()],
     mctpProgram
   );
   let relayerAccount;
@@ -5542,21 +5565,45 @@ function createMctpInitSwapInstruction(ledger, toChain, mintAddress, relayerAddr
     { pubkey: relayerAccount, isWritable: true, isSigner: false },
     { pubkey: mint, isWritable: true, isSigner: false },
     { pubkey: swapState, isWritable: true, isSigner: false },
-    { pubkey: cctpBridgePdas.senderAuthority, isWritable: false, isSigner: false },
-    { pubkey: cctpBridgePdas.tokenMessenger, isWritable: false, isSigner: false },
-    { pubkey: cctpBridgePdas.remoteTokenMessengerKey, isWritable: false, isSigner: false },
+    {
+      pubkey: cctpBridgePdas.senderAuthority,
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: cctpBridgePdas.tokenMessenger,
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: cctpBridgePdas.remoteTokenMessengerKey,
+      isWritable: false,
+      isSigner: false
+    },
     { pubkey: cctpBridgePdas.tokenMinter, isWritable: false, isSigner: false },
     { pubkey: cctpBridgePdas.localToken, isWritable: true, isSigner: false },
-    { pubkey: cctpBridgePdas.eventAuthToken, isWritable: false, isSigner: false },
-    { pubkey: cctpBridgePdas.messageTransmitter, isWritable: true, isSigner: false },
+    {
+      pubkey: cctpBridgePdas.eventAuthToken,
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: cctpBridgePdas.messageTransmitter,
+      isWritable: true,
+      isSigner: false
+    },
     { pubkey: cctpMessage.publicKey, isWritable: true, isSigner: true },
     { pubkey: cctpTokenProgramId, isWritable: false, isSigner: false },
     { pubkey: cctpCoreProgramId, isWritable: false, isSigner: false },
-    { pubkey: new PublicKey5(addresses_default.FEE_MANAGER_PROGRAM_ID), isWritable: false, isSigner: false },
+    {
+      pubkey: new PublicKey5(addresses_default.FEE_MANAGER_PROGRAM_ID),
+      isWritable: false,
+      isSigner: false
+    },
     { pubkey: TOKEN_PROGRAM_ID, isWritable: false, isSigner: false },
     { pubkey: SystemProgram4.programId, isWritable: false, isSigner: false }
   ];
-  const data = Buffer3.alloc(MctpInitSwapLayout.span);
+  const data = Buffer.alloc(MctpInitSwapLayout.span);
   MctpInitSwapLayout.encode(
     {
       instruction: getAnchorInstructionData("create_order")
@@ -5589,32 +5636,41 @@ function createMctpBridgeLedgerInstruction(params) {
   const mint = new PublicKey5(params.mintAddress);
   const ledgerAccount = getAssociatedTokenAddress(mint, params.ledger, true);
   const destinationChainId = getWormholeChainIdByName(params.toChain);
-  const destAddress = Buffer3.from(
+  const destAddress = Buffer.from(
     hexToUint8Array(
       nativeAddressToHexString(params.destinationAddress, destinationChainId)
     )
   );
   const amountInMin = getSafeU64Blob(params.amountInMin64);
   const gasDrop = getSafeU64Blob(
-    getAmountOfFractionalAmount(params.gasDrop, Math.min(getGasDecimal(params.toChain), 8))
+    getAmountOfFractionalAmount(
+      params.gasDrop,
+      Math.min(getGasDecimal(params.toChain), 8)
+    )
   );
   const feeRedeem = getSafeU64Blob(
     getAmountOfFractionalAmount(params.feeRedeem, CCTP_TOKEN_DECIMALS)
   );
   const feeSolana = getSafeU64Blob(params.feeSolana);
-  const refAddress = params.referrerAddress ? Buffer3.from(hexToUint8Array(
-    nativeAddressToHexString(params.referrerAddress, destinationChainId)
-  )) : SystemProgram4.programId.toBuffer();
+  const refAddress = params.referrerAddress ? Buffer.from(
+    hexToUint8Array(
+      nativeAddressToHexString(params.referrerAddress, destinationChainId)
+    )
+  ) : SystemProgram4.programId.toBuffer();
   const accounts = [
     { pubkey: user, isWritable: true, isSigner: true },
     { pubkey: params.ledger, isWritable: true, isSigner: false },
     { pubkey: ledgerAccount, isWritable: false, isSigner: false },
-    { pubkey: params.customPayload || new PublicKey5(addresses_default.MCTP_PROGRAM_ID), isWritable: false, isSigner: false },
+    {
+      pubkey: params.customPayload || new PublicKey5(addresses_default.MCTP_PROGRAM_ID),
+      isWritable: false,
+      isSigner: false
+    },
     { pubkey: mint, isWritable: false, isSigner: false },
     { pubkey: SystemProgram4.programId, isWritable: false, isSigner: false },
     { pubkey: new PublicKey5(refAddress), isWritable: false, isSigner: false }
   ];
-  const data = Buffer3.alloc(MctpBridgeLedgerLayout.span);
+  const data = Buffer.alloc(MctpBridgeLedgerLayout.span);
   MctpBridgeLedgerLayout.encode(
     {
       instruction: getAnchorInstructionData("init_bridge_ledger"),
@@ -5656,27 +5712,37 @@ function createMctpSwapLedgerInstruction(params) {
   const mint = new PublicKey5(params.mintAddress);
   const ledgerAccount = getAssociatedTokenAddress(mint, params.ledger, true);
   const destinationChainId = getWormholeChainIdByName(params.toChain);
-  const destAddress = Buffer3.from(
+  const destAddress = Buffer.from(
     hexToUint8Array(
       nativeAddressToHexString(params.destinationAddress, destinationChainId)
     )
   );
   const amountInMin = getSafeU64Blob(params.amountInMin64);
   const gasDrop = getSafeU64Blob(
-    getAmountOfFractionalAmount(params.gasDrop, Math.min(getGasDecimal(params.toChain), 8))
+    getAmountOfFractionalAmount(
+      params.gasDrop,
+      Math.min(getGasDecimal(params.toChain), 8)
+    )
   );
   const feeRedeem = getSafeU64Blob(
     getAmountOfFractionalAmount(params.feeRedeem, CCTP_TOKEN_DECIMALS)
   );
   const feeSolana = getSafeU64Blob(params.feeSolana);
-  const tokenOut = Buffer3.from(hexToUint8Array(
-    nativeAddressToHexString(params.tokenOut, destinationChainId)
-  ));
-  const refAddress = params.referrerAddress ? Buffer3.from(hexToUint8Array(
-    nativeAddressToHexString(params.referrerAddress, destinationChainId)
-  )) : SystemProgram4.programId.toBuffer();
+  const tokenOut = Buffer.from(
+    hexToUint8Array(
+      nativeAddressToHexString(params.tokenOut, destinationChainId)
+    )
+  );
+  const refAddress = params.referrerAddress ? Buffer.from(
+    hexToUint8Array(
+      nativeAddressToHexString(params.referrerAddress, destinationChainId)
+    )
+  ) : SystemProgram4.programId.toBuffer();
   const amountOutMin = getSafeU64Blob(
-    getAmountOfFractionalAmount(params.amountOutMin, Math.min(8, params.tokenOutDecimals))
+    getAmountOfFractionalAmount(
+      params.amountOutMin,
+      Math.min(8, params.tokenOutDecimals)
+    )
   );
   const deadline = getSafeU64Blob(params.deadline);
   const accounts = [
@@ -5686,7 +5752,7 @@ function createMctpSwapLedgerInstruction(params) {
     { pubkey: mint, isWritable: false, isSigner: false },
     { pubkey: SystemProgram4.programId, isWritable: false, isSigner: false }
   ];
-  const data = Buffer3.alloc(MctpSwapLedgerLayout.span);
+  const data = Buffer.alloc(MctpSwapLedgerLayout.span);
   MctpSwapLedgerLayout.encode(
     {
       instruction: getAnchorInstructionData("init_order_ledger"),
@@ -5737,7 +5803,11 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
   }
   const ledgerSeedPrefix = quote.hasAuction ? "LEDGER_ORDER" : "LEDGER_BRIDGE";
   const [ledger] = PublicKey5.findProgramAddressSync(
-    [Buffer3.from(ledgerSeedPrefix), user.toBytes(), randomKey.publicKey.toBytes()],
+    [
+      Buffer.from(ledgerSeedPrefix),
+      user.toBytes(),
+      randomKey.publicKey.toBytes()
+    ],
     mctpProgram
   );
   const ledgerAccount = getAssociatedTokenAddress(
@@ -5750,12 +5820,19 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
   if (quote.fromToken.contract === quote.mctpInputContract) {
     const feeSolana = forceSkipCctpInstructions ? BigInt(quote.solanaRelayerFee64) : BigInt(0);
     if (quote.suggestedPriorityFee > 0) {
-      instructions.push(ComputeBudgetProgram2.setComputeUnitPrice({
-        microLamports: quote.suggestedPriorityFee
-      }));
+      instructions.push(
+        ComputeBudgetProgram2.setComputeUnitPrice({
+          microLamports: quote.suggestedPriorityFee
+        })
+      );
     }
     instructions.push(
-      createAssociatedTokenAccountInstruction(user, ledgerAccount, ledger, new PublicKey5(quote.mctpInputContract))
+      createAssociatedTokenAccountInstruction(
+        user,
+        ledgerAccount,
+        ledger,
+        new PublicKey5(quote.mctpInputContract)
+      )
     );
     instructions.push(
       createSplTransferInstruction(
@@ -5770,29 +5847,28 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
       )
     );
     if (quote.hasAuction) {
-      instructions.push(createMctpSwapLedgerInstruction({
-        ledger,
-        swapperAddress,
-        mintAddress: quote.mctpInputContract,
-        randomKey: randomKey.publicKey,
-        toChain: quote.toChain,
-        destinationAddress,
-        feeSolana,
-        feeRedeem: quote.redeemRelayerFee,
-        gasDrop: quote.gasDrop,
-        amountInMin64: BigInt(quote.effectiveAmountIn64),
-        tokenOut,
-        tokenOutDecimals: quote.toToken.decimals,
-        referrerAddress,
-        amountOutMin: quote.minAmountOut,
-        deadline,
-        feeRateRef: quote.referrerBps
-      }));
+      instructions.push(
+        createMctpSwapLedgerInstruction({
+          ledger,
+          swapperAddress,
+          mintAddress: quote.mctpInputContract,
+          randomKey: randomKey.publicKey,
+          toChain: quote.toChain,
+          destinationAddress,
+          feeSolana,
+          feeRedeem: quote.redeemRelayerFee,
+          gasDrop: quote.gasDrop,
+          amountInMin64: BigInt(quote.effectiveAmountIn64),
+          tokenOut,
+          tokenOutDecimals: quote.toToken.decimals,
+          referrerAddress,
+          amountOutMin: quote.minAmountOut,
+          deadline,
+          feeRateRef: quote.referrerBps
+        })
+      );
       if (!forceSkipCctpInstructions) {
-        const {
-          instruction: _instruction,
-          signer: _signer
-        } = createMctpInitSwapInstruction(
+        const { instruction: _instruction, signer: _signer } = createMctpInitSwapInstruction(
           ledger,
           quote.toChain,
           quote.mctpInputContract,
@@ -5803,26 +5879,25 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
         signers.push(_signer);
       }
     } else {
-      instructions.push(createMctpBridgeLedgerInstruction({
-        ledger,
-        swapperAddress,
-        mintAddress: quote.mctpInputContract,
-        randomKey: randomKey.publicKey,
-        toChain: quote.toChain,
-        destinationAddress,
-        feeSolana,
-        feeRedeem: quote.redeemRelayerFee,
-        gasDrop: quote.gasDrop,
-        amountInMin64: BigInt(quote.effectiveAmountIn64),
-        mode,
-        referrerAddress
-      }));
+      instructions.push(
+        createMctpBridgeLedgerInstruction({
+          ledger,
+          swapperAddress,
+          mintAddress: quote.mctpInputContract,
+          randomKey: randomKey.publicKey,
+          toChain: quote.toChain,
+          destinationAddress,
+          feeSolana,
+          feeRedeem: quote.redeemRelayerFee,
+          gasDrop: quote.gasDrop,
+          amountInMin64: BigInt(quote.effectiveAmountIn64),
+          mode,
+          referrerAddress
+        })
+      );
       if (!forceSkipCctpInstructions) {
         if (mode === "WITH_FEE") {
-          const {
-            instruction: _instruction,
-            signers: _signers
-          } = createMctpBridgeWithFeeInstruction(
+          const { instruction: _instruction, signers: _signers } = createMctpBridgeWithFeeInstruction(
             ledger,
             quote.toChain,
             quote.mctpInputContract,
@@ -5832,10 +5907,7 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
           instructions.push(_instruction);
           signers.push(..._signers);
         } else {
-          const {
-            instructions: _instructions,
-            signer: _signer
-          } = createMctpBridgeLockFeeInstruction(
+          const { instructions: _instructions, signer: _signer } = createMctpBridgeLockFeeInstruction(
             ledger,
             quote.toChain,
             quote.mctpInputContract,
@@ -5860,7 +5932,10 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
       fillMaxAccounts: options?.separateSwapTx || false,
       tpmTokenAccount: options?.separateSwapTx ? tmpSwapTokenAccount.publicKey.toString() : null
     });
-    const clientSwap = decentralizeClientSwapInstructions(clientSwapRaw, connection);
+    const clientSwap = decentralizeClientSwapInstructions(
+      clientSwapRaw,
+      connection
+    );
     if (options?.separateSwapTx && clientSwapRaw.maxAccountsFilled) {
       validateJupSwap(clientSwap, tmpSwapTokenAccount.publicKey, user);
       createSwapTpmTokenAccountInstructions = await createInitializeRandomTokenAccountInstructions(
@@ -5879,19 +5954,23 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
         swapInstructions.push(clientSwap.cleanupInstruction);
       }
       _swapAddressLookupTables.push(...clientSwap.addressLookupTableAddresses);
-      instructions.push(createAssociatedTokenAccountInstruction(
-        user,
-        ledgerAccount,
-        ledger,
-        new PublicKey5(quote.mctpInputContract)
-      ));
-      instructions.push(createTransferAllAndCloseInstruction(
-        user,
-        new PublicKey5(quote.mctpInputContract),
-        tmpSwapTokenAccount.publicKey,
-        ledgerAccount,
-        user
-      ));
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          user,
+          ledgerAccount,
+          ledger,
+          new PublicKey5(quote.mctpInputContract)
+        )
+      );
+      instructions.push(
+        createTransferAllAndCloseInstruction(
+          user,
+          new PublicKey5(quote.mctpInputContract),
+          tmpSwapTokenAccount.publicKey,
+          ledgerAccount,
+          user
+        )
+      );
     } else {
       validateJupSwap(clientSwap, ledgerAccount, user);
       instructions.push(...clientSwap.computeBudgetInstructions);
@@ -5906,29 +5985,31 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
     }
     const feeSolana = swapInstructions.length > 0 ? BigInt(0) : BigInt(quote.solanaRelayerFee64);
     if (quote.hasAuction) {
-      instructions.push(createMctpSwapLedgerInstruction({
-        ledger,
-        swapperAddress,
-        mintAddress: quote.mctpInputContract,
-        randomKey: randomKey.publicKey,
-        toChain: quote.toChain,
-        destinationAddress,
-        feeSolana,
-        feeRedeem: quote.redeemRelayerFee,
-        gasDrop: quote.gasDrop,
-        amountInMin64: getAmountOfFractionalAmount(quote.minMiddleAmount, CCTP_TOKEN_DECIMALS),
-        tokenOut,
-        tokenOutDecimals: quote.toToken.decimals,
-        referrerAddress,
-        amountOutMin: quote.minAmountOut,
-        deadline,
-        feeRateRef: quote.referrerBps
-      }));
+      instructions.push(
+        createMctpSwapLedgerInstruction({
+          ledger,
+          swapperAddress,
+          mintAddress: quote.mctpInputContract,
+          randomKey: randomKey.publicKey,
+          toChain: quote.toChain,
+          destinationAddress,
+          feeSolana,
+          feeRedeem: quote.redeemRelayerFee,
+          gasDrop: quote.gasDrop,
+          amountInMin64: getAmountOfFractionalAmount(
+            quote.minMiddleAmount,
+            CCTP_TOKEN_DECIMALS
+          ),
+          tokenOut,
+          tokenOutDecimals: quote.toToken.decimals,
+          referrerAddress,
+          amountOutMin: quote.minAmountOut,
+          deadline,
+          feeRateRef: quote.referrerBps
+        })
+      );
       if (swapInstructions.length > 0) {
-        const {
-          instruction: _instruction,
-          signer: _signer
-        } = createMctpInitSwapInstruction(
+        const { instruction: _instruction, signer: _signer } = createMctpInitSwapInstruction(
           ledger,
           quote.toChain,
           quote.mctpInputContract,
@@ -5939,26 +6020,28 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
         signers.push(_signer);
       }
     } else {
-      instructions.push(createMctpBridgeLedgerInstruction({
-        ledger,
-        swapperAddress,
-        mintAddress: quote.mctpInputContract,
-        randomKey: randomKey.publicKey,
-        toChain: quote.toChain,
-        destinationAddress,
-        feeSolana,
-        feeRedeem: quote.redeemRelayerFee,
-        gasDrop: quote.gasDrop,
-        amountInMin64: getAmountOfFractionalAmount(quote.minMiddleAmount, CCTP_TOKEN_DECIMALS),
-        mode,
-        referrerAddress
-      }));
+      instructions.push(
+        createMctpBridgeLedgerInstruction({
+          ledger,
+          swapperAddress,
+          mintAddress: quote.mctpInputContract,
+          randomKey: randomKey.publicKey,
+          toChain: quote.toChain,
+          destinationAddress,
+          feeSolana,
+          feeRedeem: quote.redeemRelayerFee,
+          gasDrop: quote.gasDrop,
+          amountInMin64: getAmountOfFractionalAmount(
+            quote.minMiddleAmount,
+            CCTP_TOKEN_DECIMALS
+          ),
+          mode,
+          referrerAddress
+        })
+      );
       if (swapInstructions.length > 0) {
         if (mode === "WITH_FEE") {
-          const {
-            instruction: _instruction,
-            signers: _signers
-          } = createMctpBridgeWithFeeInstruction(
+          const { instruction: _instruction, signers: _signers } = createMctpBridgeWithFeeInstruction(
             ledger,
             quote.toChain,
             quote.mctpInputContract,
@@ -5968,10 +6051,7 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
           instructions.push(_instruction);
           signers.push(..._signers);
         } else {
-          const {
-            instructions: _instructions,
-            signer: _signer
-          } = createMctpBridgeLockFeeInstruction(
+          const { instructions: _instructions, signer: _signer } = createMctpBridgeLockFeeInstruction(
             ledger,
             quote.toChain,
             quote.mctpInputContract,
@@ -5984,10 +6064,15 @@ async function createMctpFromSolanaInstructions(quote, swapperAddress, destinati
       }
     }
   }
-  const totalLookupTables = await getAddressLookupTableAccounts(_lookupTablesAddress.concat(_swapAddressLookupTables), connection);
+  const totalLookupTables = await getAddressLookupTableAccounts(
+    _lookupTablesAddress.concat(_swapAddressLookupTables),
+    connection
+  );
   lookupTables = totalLookupTables.slice(0, _lookupTablesAddress.length);
   if (swapInstructions.length > 0) {
-    const swapLookupTables = totalLookupTables.slice(_lookupTablesAddress.length);
+    const swapLookupTables = totalLookupTables.slice(
+      _lookupTablesAddress.length
+    );
     swapMessageV0Params = {
       messageV0: {
         payerKey: user,
@@ -6010,35 +6095,58 @@ import {
   ComputeBudgetProgram as ComputeBudgetProgram3
 } from "@solana/web3.js";
 import { blob as blob3, struct as struct3, u16 as u162, u8 as u83 } from "@solana/buffer-layout";
-import { Buffer as Buffer4 } from "buffer";
 import { ethers as ethers2, ZeroAddress as ZeroAddress2 } from "ethers";
 function createSwiftOrderHash(quote, swapperAddress, destinationAddress, referrerAddress, randomKeyHex) {
   const orderDataSize = 239;
-  const data = Buffer4.alloc(orderDataSize);
+  const data = Buffer.alloc(orderDataSize);
   let offset = 0;
   const sourceChainId = getWormholeChainIdByName(quote.fromChain);
-  const trader = Buffer4.from(hexToUint8Array(nativeAddressToHexString(swapperAddress, sourceChainId)));
+  const trader = Buffer.from(
+    hexToUint8Array(nativeAddressToHexString(swapperAddress, sourceChainId))
+  );
   data.set(trader, 0);
   offset += 32;
   data.writeUInt16BE(sourceChainId, offset);
   offset += 2;
-  const _tokenIn = quote.swiftInputContract === ZeroAddress2 ? nativeAddressToHexString(SystemProgram5.programId.toString(), getWormholeChainIdByName("solana")) : nativeAddressToHexString(quote.swiftInputContract, sourceChainId);
-  const tokenIn = Buffer4.from(hexToUint8Array(_tokenIn));
+  const _tokenIn = quote.swiftInputContract === ZeroAddress2 ? nativeAddressToHexString(
+    SystemProgram5.programId.toString(),
+    getWormholeChainIdByName("solana")
+  ) : nativeAddressToHexString(quote.swiftInputContract, sourceChainId);
+  const tokenIn = Buffer.from(hexToUint8Array(_tokenIn));
   data.set(tokenIn, offset);
   offset += 32;
   const destinationChainId = getWormholeChainIdByName(quote.toChain);
-  const destAddress = Buffer4.from(hexToUint8Array(nativeAddressToHexString(destinationAddress, destinationChainId)));
+  const destAddress = Buffer.from(
+    hexToUint8Array(
+      nativeAddressToHexString(destinationAddress, destinationChainId)
+    )
+  );
   data.set(destAddress, offset);
   offset += 32;
   data.writeUInt16BE(destinationChainId, offset);
   offset += 2;
-  const _tokenOut = quote.toToken.contract === ZeroAddress2 ? nativeAddressToHexString(SystemProgram5.programId.toString(), getWormholeChainIdByName("solana")) : nativeAddressToHexString(quote.toToken.contract, destinationChainId);
-  const tokenOut = Buffer4.from(hexToUint8Array(_tokenOut));
+  const _tokenOut = quote.toToken.contract === ZeroAddress2 ? nativeAddressToHexString(
+    SystemProgram5.programId.toString(),
+    getWormholeChainIdByName("solana")
+  ) : nativeAddressToHexString(quote.toToken.contract, destinationChainId);
+  const tokenOut = Buffer.from(hexToUint8Array(_tokenOut));
   data.set(tokenOut, offset);
   offset += 32;
-  data.writeBigUInt64BE(getAmountOfFractionalAmount(quote.minAmountOut, Math.min(quote.toToken.decimals, 8)), offset);
+  data.writeBigUInt64BE(
+    getAmountOfFractionalAmount(
+      quote.minAmountOut,
+      Math.min(quote.toToken.decimals, 8)
+    ),
+    offset
+  );
   offset += 8;
-  data.writeBigUInt64BE(getAmountOfFractionalAmount(quote.gasDrop, Math.min(getGasDecimal(quote.toChain), 8)), offset);
+  data.writeBigUInt64BE(
+    getAmountOfFractionalAmount(
+      quote.gasDrop,
+      Math.min(getGasDecimal(quote.toChain), 8)
+    ),
+    offset
+  );
   offset += 8;
   data.writeBigUInt64BE(BigInt(quote.cancelRelayerFee64), offset);
   offset += 8;
@@ -6046,7 +6154,11 @@ function createSwiftOrderHash(quote, swapperAddress, destinationAddress, referre
   offset += 8;
   data.writeBigUInt64BE(BigInt(quote.deadline64), offset);
   offset += 8;
-  const refAddress = referrerAddress ? Buffer4.from(hexToUint8Array(nativeAddressToHexString(referrerAddress, destinationChainId))) : SystemProgram5.programId.toBuffer();
+  const refAddress = referrerAddress ? Buffer.from(
+    hexToUint8Array(
+      nativeAddressToHexString(referrerAddress, destinationChainId)
+    )
+  ) : SystemProgram5.programId.toBuffer();
   data.set(refAddress, offset);
   offset += 32;
   data.writeUInt8(quote.referrerBps, offset);
@@ -6056,14 +6168,14 @@ function createSwiftOrderHash(quote, swapperAddress, destinationAddress, referre
   offset += 1;
   data.writeUInt8(quote.swiftAuctionMode, offset);
   offset += 1;
-  const _randomKey = Buffer4.from(hexToUint8Array(randomKeyHex));
+  const _randomKey = Buffer.from(hexToUint8Array(randomKeyHex));
   data.set(_randomKey, offset);
   offset += 32;
   if (offset !== orderDataSize) {
     throw new Error(`Invalid order data size: ${offset}`);
   }
   const hash = ethers2.keccak256(data);
-  return Buffer4.from(hexToUint8Array(hash));
+  return Buffer.from(hexToUint8Array(hash));
 }
 var InitSwiftLayout = struct3([
   blob3(8, "instruction"),
@@ -6089,7 +6201,9 @@ function createSwiftInitInstruction(params) {
   const mint = quote.swiftInputContract === ZeroAddress2 ? solMint : new PublicKey6(quote.swiftInputContract);
   const destinationChainId = getWormholeChainIdByName(quote.toChain);
   if (destinationChainId !== quote.toToken.wChainId) {
-    throw new Error(`Destination chain ID mismatch: ${destinationChainId} != ${quote.toToken.wChainId}`);
+    throw new Error(
+      `Destination chain ID mismatch: ${destinationChainId} != ${quote.toToken.wChainId}`
+    );
   }
   const accounts = [
     { pubkey: params.trader, isWritable: false, isSigner: true },
@@ -6098,32 +6212,71 @@ function createSwiftInitInstruction(params) {
     { pubkey: params.stateAccount, isWritable: true, isSigner: false },
     { pubkey: params.relayerAccount, isWritable: true, isSigner: false },
     { pubkey: mint, isWritable: false, isSigner: false },
-    { pubkey: new PublicKey6(addresses_default.FEE_MANAGER_PROGRAM_ID), isWritable: false, isSigner: false },
-    { pubkey: new PublicKey6(addresses_default.TOKEN_PROGRAM_ID), isWritable: false, isSigner: false },
+    {
+      pubkey: new PublicKey6(addresses_default.FEE_MANAGER_PROGRAM_ID),
+      isWritable: false,
+      isSigner: false
+    },
+    {
+      pubkey: new PublicKey6(addresses_default.TOKEN_PROGRAM_ID),
+      isWritable: false,
+      isSigner: false
+    },
     { pubkey: SystemProgram5.programId, isWritable: false, isSigner: false }
   ];
-  const data = Buffer4.alloc(InitSwiftLayout.span);
-  const refAddress = params.referrerAddress ? Buffer4.from(hexToUint8Array(nativeAddressToHexString(params.referrerAddress, destinationChainId))) : SystemProgram5.programId.toBuffer();
-  const minMiddleAmount = quote.fromToken.contract === quote.swiftInputContract ? BigInt(quote.effectiveAmountIn64) : getAmountOfFractionalAmount(quote.minMiddleAmount, quote.swiftInputDecimals);
-  InitSwiftLayout.encode({
-    instruction: getAnchorInstructionData("init_order"),
-    amountInMin: getSafeU64Blob(minMiddleAmount),
-    nativeInput: quote.swiftInputContract === ZeroAddress2 ? 1 : 0,
-    feeSubmit: getSafeU64Blob(BigInt(quote.submitRelayerFee64)),
-    destAddress: Buffer4.from(hexToUint8Array(nativeAddressToHexString(params.destinationAddress, destinationChainId))),
-    destinationChain: destinationChainId,
-    tokenOut: Buffer4.from(hexToUint8Array(nativeAddressToHexString(quote.toToken.contract, destinationChainId))),
-    amountOutMin: getSafeU64Blob(getAmountOfFractionalAmount(quote.minAmountOut, Math.min(quote.toToken.decimals, 8))),
-    gasDrop: getSafeU64Blob(getAmountOfFractionalAmount(quote.gasDrop, Math.min(getGasDecimal(quote.toChain), 8))),
-    feeCancel: getSafeU64Blob(BigInt(quote.cancelRelayerFee64)),
-    feeRefund: getSafeU64Blob(BigInt(quote.refundRelayerFee64)),
-    deadline: getSafeU64Blob(params.deadline),
-    refAddress,
-    feeRateRef: quote.referrerBps,
-    feeRateMayan: quote.protocolBps,
-    auctionMode: quote.swiftAuctionMode,
-    randomKey: params.randomKey.toBuffer()
-  }, data);
+  const data = Buffer.alloc(InitSwiftLayout.span);
+  const refAddress = params.referrerAddress ? Buffer.from(
+    hexToUint8Array(
+      nativeAddressToHexString(params.referrerAddress, destinationChainId)
+    )
+  ) : SystemProgram5.programId.toBuffer();
+  const minMiddleAmount = quote.fromToken.contract === quote.swiftInputContract ? BigInt(quote.effectiveAmountIn64) : getAmountOfFractionalAmount(
+    quote.minMiddleAmount,
+    quote.swiftInputDecimals
+  );
+  InitSwiftLayout.encode(
+    {
+      instruction: getAnchorInstructionData("init_order"),
+      amountInMin: getSafeU64Blob(minMiddleAmount),
+      nativeInput: quote.swiftInputContract === ZeroAddress2 ? 1 : 0,
+      feeSubmit: getSafeU64Blob(BigInt(quote.submitRelayerFee64)),
+      destAddress: Buffer.from(
+        hexToUint8Array(
+          nativeAddressToHexString(
+            params.destinationAddress,
+            destinationChainId
+          )
+        )
+      ),
+      destinationChain: destinationChainId,
+      tokenOut: Buffer.from(
+        hexToUint8Array(
+          nativeAddressToHexString(quote.toToken.contract, destinationChainId)
+        )
+      ),
+      amountOutMin: getSafeU64Blob(
+        getAmountOfFractionalAmount(
+          quote.minAmountOut,
+          Math.min(quote.toToken.decimals, 8)
+        )
+      ),
+      gasDrop: getSafeU64Blob(
+        getAmountOfFractionalAmount(
+          quote.gasDrop,
+          Math.min(getGasDecimal(quote.toChain), 8)
+        )
+      ),
+      feeCancel: getSafeU64Blob(BigInt(quote.cancelRelayerFee64)),
+      feeRefund: getSafeU64Blob(BigInt(quote.refundRelayerFee64)),
+      deadline: getSafeU64Blob(params.deadline),
+      refAddress,
+      feeRateRef: quote.referrerBps,
+      feeRateMayan: quote.protocolBps,
+      auctionMode: quote.swiftAuctionMode,
+      randomKey: params.randomKey.toBuffer()
+    },
+    data
+  );
   return new TransactionInstruction3({
     keys: accounts,
     data,
@@ -6162,25 +6315,32 @@ async function createSwiftFromSolanaInstructions(quote, swapperAddress, destinat
     randomKey.publicKey.toBuffer().toString("hex")
   );
   const [state] = PublicKey6.findProgramAddressSync(
-    [Buffer4.from("STATE_SOURCE"), hash],
+    [Buffer.from("STATE_SOURCE"), hash],
     swiftProgram
   );
   const swiftInputMint = quote.swiftInputContract === ZeroAddress2 ? solMint : new PublicKey6(quote.swiftInputContract);
-  const stateAccount = getAssociatedTokenAddress(
-    swiftInputMint,
-    state,
-    true
-  );
+  const stateAccount = getAssociatedTokenAddress(swiftInputMint, state, true);
   const relayer = quote.gasless ? new PublicKey6(quote.relayer) : trader;
-  const relayerAccount = getAssociatedTokenAddress(swiftInputMint, relayer, false);
+  const relayerAccount = getAssociatedTokenAddress(
+    swiftInputMint,
+    relayer,
+    false
+  );
   if (quote.fromToken.contract === quote.swiftInputContract) {
     if (quote.suggestedPriorityFee > 0) {
-      instructions.push(ComputeBudgetProgram3.setComputeUnitPrice({
-        microLamports: quote.suggestedPriorityFee
-      }));
+      instructions.push(
+        ComputeBudgetProgram3.setComputeUnitPrice({
+          microLamports: quote.suggestedPriorityFee
+        })
+      );
     }
     instructions.push(
-      createAssociatedTokenAccountInstruction(relayer, stateAccount, state, swiftInputMint)
+      createAssociatedTokenAccountInstruction(
+        relayer,
+        stateAccount,
+        state,
+        swiftInputMint
+      )
     );
     if (quote.swiftInputContract === ZeroAddress2) {
       instructions.push(
@@ -6218,7 +6378,10 @@ async function createSwiftFromSolanaInstructions(quote, swapperAddress, destinat
       fillMaxAccounts: options?.separateSwapTx || false,
       tpmTokenAccount: options?.separateSwapTx ? tmpSwapTokenAccount.publicKey.toString() : null
     });
-    const clientSwap = decentralizeClientSwapInstructions(clientSwapRaw, connection);
+    const clientSwap = decentralizeClientSwapInstructions(
+      clientSwapRaw,
+      connection
+    );
     if (options?.separateSwapTx && clientSwapRaw.maxAccountsFilled) {
       validateJupSwap(clientSwap, tmpSwapTokenAccount.publicKey, trader);
       createSwapTpmTokenAccountInstructions = await createInitializeRandomTokenAccountInstructions(
@@ -6237,14 +6400,23 @@ async function createSwiftFromSolanaInstructions(quote, swapperAddress, destinat
         swapInstructions.push(clientSwap.cleanupInstruction);
       }
       _swapAddressLookupTables.push(...clientSwap.addressLookupTableAddresses);
-      instructions.push(createAssociatedTokenAccountInstruction(relayer, stateAccount, state, swiftInputMint));
-      instructions.push(createTransferAllAndCloseInstruction(
-        trader,
-        swiftInputMint,
-        tmpSwapTokenAccount.publicKey,
-        stateAccount,
-        relayer
-      ));
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          relayer,
+          stateAccount,
+          state,
+          swiftInputMint
+        )
+      );
+      instructions.push(
+        createTransferAllAndCloseInstruction(
+          trader,
+          swiftInputMint,
+          tmpSwapTokenAccount.publicKey,
+          stateAccount,
+          relayer
+        )
+      );
     } else {
       instructions.push(...clientSwap.computeBudgetInstructions);
       if (clientSwap.setupInstructions) {
@@ -6257,22 +6429,29 @@ async function createSwiftFromSolanaInstructions(quote, swapperAddress, destinat
       _lookupTablesAddress.push(...clientSwap.addressLookupTableAddresses);
     }
   }
-  instructions.push(createSwiftInitInstruction({
-    quote,
-    state,
-    trader,
-    stateAccount,
-    randomKey: randomKey.publicKey,
-    relayerAccount,
-    relayer,
-    destinationAddress,
-    deadline,
-    referrerAddress
-  }));
-  const totalLookupTables = await getAddressLookupTableAccounts(_lookupTablesAddress.concat(_swapAddressLookupTables), connection);
+  instructions.push(
+    createSwiftInitInstruction({
+      quote,
+      state,
+      trader,
+      stateAccount,
+      randomKey: randomKey.publicKey,
+      relayerAccount,
+      relayer,
+      destinationAddress,
+      deadline,
+      referrerAddress
+    })
+  );
+  const totalLookupTables = await getAddressLookupTableAccounts(
+    _lookupTablesAddress.concat(_swapAddressLookupTables),
+    connection
+  );
   lookupTables = totalLookupTables.slice(0, _lookupTablesAddress.length);
   if (swapInstructions.length > 0) {
-    const swapLookupTables = totalLookupTables.slice(_lookupTablesAddress.length);
+    const swapLookupTables = totalLookupTables.slice(
+      _lookupTablesAddress.length
+    );
     swapMessageV0Params = {
       messageV0: {
         payerKey: relayer,
@@ -6350,20 +6529,20 @@ async function createSwapFromSolanaInstructions(quote, swapperWalletAddress, des
     referrerAddr = SystemProgram6.programId;
   }
   const [mayanFee, mayanFeeNonce] = PublicKey7.findProgramAddressSync(
-    [Buffer5.from("MAYANFEE")],
+    [Buffer.from("MAYANFEE")],
     mayanProgram
   );
   const [referrerFee, referrerFeeNonce] = PublicKey7.findProgramAddressSync(
-    [Buffer5.from("REFERRERFEE"), referrerAddr.toBuffer()],
+    [Buffer.from("REFERRERFEE"), referrerAddr.toBuffer()],
     mayanProgram
   );
   const msg1 = Keypair4.generate();
   const msg2 = Keypair4.generate();
   const [state, stateNonce] = PublicKey7.findProgramAddressSync(
     [
-      Buffer5.from("V2STATE"),
-      Buffer5.from(msg1.publicKey.toBytes()),
-      Buffer5.from(msg2.publicKey.toBytes())
+      Buffer.from("V2STATE"),
+      Buffer.from(msg1.publicKey.toBytes()),
+      Buffer.from(msg2.publicKey.toBytes())
     ],
     mayanProgram
   );
@@ -6453,7 +6632,7 @@ async function createSwapFromSolanaInstructions(quote, swapperWalletAddress, des
       );
     }
   }
-  const destAddress = Buffer5.from(
+  const destAddress = Buffer.from(
     hexToUint8Array(
       nativeAddressToHexString(destinationAddress, destinationChainId)
     )
@@ -6484,7 +6663,7 @@ async function createSwapFromSolanaInstructions(quote, swapperWalletAddress, des
     throw new Error("Deadline is not valid");
   }
   const deadline = BigInt(quote.deadline64);
-  const swapData = Buffer5.alloc(SwapLayout.span);
+  const swapData = Buffer.alloc(SwapLayout.span);
   const swapFields = {
     instruction: 101,
     stateNonce,
@@ -6604,7 +6783,7 @@ async function swapFromSolana(quote, swapperWalletAddress, destinationAddress, r
     signedTrx = await signTransaction(transaction);
   }
   if (quote.gasless) {
-    const serializedTrx = Buffer5.from(signedTrx.serialize()).toString("base64");
+    const serializedTrx = Buffer.from(signedTrx.serialize()).toString("base64");
     const { orderHash } = await submitSwiftSolanaSwap(serializedTrx);
     return { signature: orderHash, serializedTrx: null };
   }

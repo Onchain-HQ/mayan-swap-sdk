@@ -25,7 +25,6 @@ import {
 	JitoBundleOptions,
 } from '../types';
 import addresses from '../addresses';
-import { Buffer } from 'buffer';
 import { blob, struct, u8 } from '@solana/buffer-layout';
 import { getSuggestedRelayer } from '../api';
 import { encodeBase58, sha256, toUtf8Bytes } from 'ethers';
