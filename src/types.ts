@@ -5,32 +5,39 @@ import {
 	TransactionInstruction as SolanaTransactionInstruction,
 	Keypair as SolanaKeypair,
 } from '@solana/web3.js';
-import {
-	Transaction as SuiTransaction,
-	TransactionResult as SuiTransactionResult,
-} from '@mysten/sui/transactions';
 
-export type ChainName = 'solana'
-	| 'ethereum' | 'bsc' | 'polygon' | 'avalanche' | 'arbitrum' | 'optimism' | 'base' | 'aptos' | 'sui' | 'unichain' | 'linea';
+export type ChainName =
+	| 'solana'
+	| 'ethereum'
+	| 'bsc'
+	| 'polygon'
+	| 'avalanche'
+	| 'arbitrum'
+	| 'optimism'
+	| 'base'
+	| 'aptos'
+	| 'sui'
+	| 'unichain'
+	| 'linea';
 
 export type TokenStandard = 'native' | 'erc20' | 'spl' | 'spl2022' | 'suicoin';
 
 export type Token = {
-	name: string,
-	symbol: string,
-	mint: string,
-	contract: string,
-	chainId: number,
-	wChainId?: number,
-	decimals: number,
-	logoURI: string,
-	coingeckoId: string,
-	realOriginChainId?: number,
-	realOriginContractAddress?: string,
-	supportsPermit: boolean,
+	name: string;
+	symbol: string;
+	mint: string;
+	contract: string;
+	chainId: number;
+	wChainId?: number;
+	decimals: number;
+	logoURI: string;
+	coingeckoId: string;
+	realOriginChainId?: number;
+	realOriginContractAddress?: string;
+	supportsPermit: boolean;
 	verified: boolean;
-	standard: TokenStandard,
-	verifiedAddress: string,
+	standard: TokenStandard;
+	verifiedAddress: string;
 };
 
 export type QuoteParams = {
@@ -65,10 +72,10 @@ export type QuoteParams = {
 };
 
 export type QuoteError = {
-	message: string,
-	code: number,
-	data: any,
-}
+	message: string;
+	code: number;
+	data: any;
+};
 
 export type Quote = {
 	type: 'WH' | 'SWIFT' | 'MCTP' | 'SHUTTLE' | 'FAST_MCTP';
@@ -104,7 +111,7 @@ export type Quote = {
 	priceStat: {
 		ratio: number;
 		status: 'GOOD' | 'NORMAL' | 'BAD';
-	}
+	};
 	mintDecimals: {
 		from: number;
 		to: number;
@@ -141,13 +148,13 @@ export type Quote = {
 	sendTransactionCost: number;
 	maxUserGasDrop: number;
 	rentCost?: bigint;
-	shuttleParams : {
+	shuttleParams: {
 		maxLLFee: string;
 		maxRelayingFee: string;
 		fastTransferDeadline: number;
-		hasDestSwap: boolean
+		hasDestSwap: boolean;
 		path: string;
-	}
+	};
 	shuttleInputContract: string;
 	shuttleInputDecimals: number;
 	mctpVerifiedInputAddress: string;
@@ -174,144 +181,107 @@ export type SolanaTransactionSigner = {
 };
 
 export type Erc20Permit = {
-	value: bigint,
-	deadline: number,
-	v: number,
-	r: string,
-	s: string,
-}
+	value: bigint;
+	deadline: number;
+	v: number;
+	r: string;
+	s: string;
+};
 
 type BaseGetSolanaSwapParams = {
-	amountIn64: string,
-	fromToken: string,
-	minMiddleAmount: number,
-	middleToken: string,
-	userWallet: string,
-	slippageBps: number,
-	referrerAddress?: string,
-	fillMaxAccounts?: boolean,
-	tpmTokenAccount?: string,
-}
+	amountIn64: string;
+	fromToken: string;
+	minMiddleAmount: number;
+	middleToken: string;
+	userWallet: string;
+	slippageBps: number;
+	referrerAddress?: string;
+	fillMaxAccounts?: boolean;
+	tpmTokenAccount?: string;
+};
 
 type MctpGetSolanaSwapParams = BaseGetSolanaSwapParams & {
-	userLedger: string,
-	depositMode: 'WITH_FEE' | 'LOCK_FEE' | 'SWAP',
-}
+	userLedger: string;
+	depositMode: 'WITH_FEE' | 'LOCK_FEE' | 'SWAP';
+};
 
 type SwiftGetSolanaSwapParams = BaseGetSolanaSwapParams & {
-	orderHash: string,
-	depositMode: 'SWIFT' | 'SWIFT_GASLESS',
-}
+	orderHash: string;
+	depositMode: 'SWIFT' | 'SWIFT_GASLESS';
+};
 
-export type GetSolanaSwapParams = MctpGetSolanaSwapParams | SwiftGetSolanaSwapParams;
-
-type BaseGetSuiSwapParams = {
-	amountIn64: string,
-	inputCoinType: string,
-	middleCoinType: string,
-	userWallet: string,
-	referrerAddress?: string,
-	inputCoin: SuiFunctionParameter,
-	transaction: string,
-}
-
-type MctpGetSuiSwapParams = BaseGetSuiSwapParams & {
-	withWhFee: boolean
-}
-
-export type GetSuiSwapParams = MctpGetSuiSwapParams;
+export type GetSolanaSwapParams =
+	| MctpGetSolanaSwapParams
+	| SwiftGetSolanaSwapParams;
 
 export type SolanaKeyInfo = {
-	pubkey: string,
-	isWritable: boolean,
-	isSigner: boolean,
-}
+	pubkey: string;
+	isWritable: boolean;
+	isSigner: boolean;
+};
 export type InstructionInfo = {
-	accounts: SolanaKeyInfo[],
-	data: string,
-	programId: string,
-}
+	accounts: SolanaKeyInfo[];
+	data: string;
+	programId: string;
+};
 
 export type SolanaClientSwap = {
-	computeBudgetInstructions?: InstructionInfo[],
-	setupInstructions?: InstructionInfo[],
-	swapInstruction: InstructionInfo,
-	cleanupInstruction: InstructionInfo,
-	addressLookupTableAddresses: string[],
-	maxAccountsFilled: boolean,
-}
+	computeBudgetInstructions?: InstructionInfo[];
+	setupInstructions?: InstructionInfo[];
+	swapInstruction: InstructionInfo;
+	cleanupInstruction: InstructionInfo;
+	addressLookupTableAddresses: string[];
+	maxAccountsFilled: boolean;
+};
 
 export type SuiFunctionNestedResult = {
 	$kind: 'NestedResult';
 	NestedResult: [number, number];
 };
 
-export type SuiFunctionParameter =
- {
-	result:
-		| SuiTransactionResult
-		| SuiFunctionNestedResult
-		| { $kind: 'Input'; Input: number; type?: 'object' };
-	objectId?: undefined | null;
-}
-	| {
-	result?: undefined | null;
-	objectId: string;
-};
-
-export type SuiClientSwap = {
-	tx: string,
-	outCoin: SuiTransactionResult,
-	whFeeCoin?: SuiTransactionResult | SuiFunctionNestedResult,
-}
-
 export type ReferrerAddresses = {
-	solana?: string | null,
-	evm?: string | null,
-	sui?: string | null,
-}
+	solana?: string | null;
+	evm?: string | null;
+	sui?: string | null;
+};
 
 export type SwiftEvmOrderTypedData = {
 	domain: {
-		name: "Mayan Swift",
-		chainId: number,
-		verifyingContract: string,
-	},
+		name: 'Mayan Swift';
+		chainId: number;
+		verifyingContract: string;
+	};
 	types: {
 		CreateOrder: [
-			{ name: 'OrderId', type: 'bytes32' },
-			{ name: 'InputAmount', type: 'uint256' },
-			{ name: 'SubmissionFee', type: 'uint256' },
-		],
-	},
+			{ name: 'OrderId'; type: 'bytes32' },
+			{ name: 'InputAmount'; type: 'uint256' },
+			{ name: 'SubmissionFee'; type: 'uint256' }
+		];
+	};
 	value: {
-		OrderId: string,
-		InputAmount: bigint,
-		SubmissionFee: bigint,
-	}
-}
+		OrderId: string;
+		InputAmount: bigint;
+		SubmissionFee: bigint;
+	};
+};
 
 export type EvmForwarderParams = {
-	method: string,
-	params: any[],
-}
+	method: string;
+	params: any[];
+};
 
 export type JitoBundleOptions = {
-	tipLamports: number,
-	signAllTransactions: <T extends Transaction | VersionedTransaction>(transactions: T[]) => Promise<T[]>
-	jitoAccount?: string,
-	jitoSendUrl?: string,
-	separateSwapTx?: boolean,
-}
-
-export type ComposableSuiMoveCallsOptions = {
-	builtTransaction?: SuiTransaction;
-	inputCoin?: SuiFunctionParameter;
-	whFeeCoin?: SuiFunctionParameter;
+	tipLamports: number;
+	signAllTransactions: <T extends Transaction | VersionedTransaction>(
+		transactions: T[]
+	) => Promise<T[]>;
+	jitoAccount?: string;
+	jitoSendUrl?: string;
+	separateSwapTx?: boolean;
 };
 
 export type SwapMessageV0Params = {
-	messageV0: Omit<CompileV0Args, 'recentBlockhash'>,
-	createTmpTokenAccountIxs: SolanaTransactionInstruction[],
-	tmpTokenAccount: SolanaKeypair,
-}
+	messageV0: Omit<CompileV0Args, 'recentBlockhash'>;
+	createTmpTokenAccountIxs: SolanaTransactionInstruction[];
+	tmpTokenAccount: SolanaKeypair;
+};

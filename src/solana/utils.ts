@@ -9,16 +9,26 @@ import {
 	Transaction,
 	TransactionInstruction,
 	AddressLookupTableAccount,
-	VersionedTransaction, ComputeBudgetProgram
+	VersionedTransaction,
+	ComputeBudgetProgram,
 } from '@solana/web3.js';
-import {getAmountOfFractionalAmount, getAssociatedTokenAddress, getSafeU64Blob, wait} from '../utils';
-import {InstructionInfo, SolanaClientSwap, SolanaTransactionSigner, JitoBundleOptions} from '../types';
-import addresses from "../addresses";
-import {Buffer} from "buffer";
-import {blob, struct, u8} from "@solana/buffer-layout";
-import { sha256 } from 'js-sha256';
-import bs58 from 'bs58';
+import {
+	getAmountOfFractionalAmount,
+	getAssociatedTokenAddress,
+	getSafeU64Blob,
+	wait,
+} from '../utils';
+import {
+	InstructionInfo,
+	SolanaClientSwap,
+	SolanaTransactionSigner,
+	JitoBundleOptions,
+} from '../types';
+import addresses from '../addresses';
+import { Buffer } from 'buffer';
+import { blob, struct, u8 } from '@solana/buffer-layout';
 import { getSuggestedRelayer } from '../api';
+import { encodeBase58, sha256, toUtf8Bytes } from 'ethers';
 
 const cachedConnections: Record<string, Connection> = {};
 
@@ -26,24 +36,23 @@ function getConnection(rpcUrl: string) {
 	cachedConnections[rpcUrl] ??= new Connection(rpcUrl);
 	return new Connection(rpcUrl);
 }
-export async function submitTransactionWithRetry(
-	{
-		trx,
-		connection,
-		errorChance,
-		extraRpcs,
-		options,
-		rate = 8,
-	}: {
-		trx: Uint8Array;
-		connection: Connection;
-		errorChance: number;
-		extraRpcs: string[];
-		options?: SendOptions;
-		rate?: number;
-	}): Promise<{
-	signature: string,
-	serializedTrx: Uint8Array,
+export async function submitTransactionWithRetry({
+	trx,
+	connection,
+	errorChance,
+	extraRpcs,
+	options,
+	rate = 8,
+}: {
+	trx: Uint8Array;
+	connection: Connection;
+	errorChance: number;
+	extraRpcs: string[];
+	options?: SendOptions;
+	rate?: number;
+}): Promise<{
+	signature: string;
+	serializedTrx: Uint8Array;
 }> {
 	let signature: string | null = null;
 	let errorNumber = 0;
@@ -51,7 +60,9 @@ export async function submitTransactionWithRetry(
 	for (let i = 0; i < rate; i++) {
 		if (signature) {
 			try {
-				const status = await Promise.any(connections.map((c) => c.getSignatureStatus(signature!)));
+				const status = await Promise.any(
+					connections.map((c) => c.getSignatureStatus(signature!))
+				);
 				if (status && status.value) {
 					if (status.value.err) {
 						if (errorNumber >= errorChance) {
@@ -69,15 +80,21 @@ export async function submitTransactionWithRetry(
 					}
 				}
 			} catch (err) {
-				console.error(err)
+				console.error(err);
 			}
 		}
-		const sendRequests = connections.map((c) => c.sendRawTransaction(trx, options));
+		const sendRequests = connections.map((c) =>
+			c.sendRawTransaction(trx, options)
+		);
 		if (!signature) {
 			try {
 				signature = await Promise.any(sendRequests);
 			} catch (err) {
-				console.error('Transaction not submitted, remaining attempts:', rate - i - 1, err);
+				console.error(
+					'Transaction not submitted, remaining attempts:',
+					rate - i - 1,
+					err
+				);
 			}
 		}
 		await wait(1000);
@@ -99,16 +116,18 @@ export function createAssociatedTokenAccountInstruction(
 	owner: PublicKey,
 	mint: PublicKey,
 	programId = new PublicKey(addresses.TOKEN_PROGRAM_ID),
-	associatedTokenProgramId = new PublicKey(addresses.ASSOCIATED_TOKEN_PROGRAM_ID)
+	associatedTokenProgramId = new PublicKey(
+		addresses.ASSOCIATED_TOKEN_PROGRAM_ID
+	)
 ): TransactionInstruction {
 	const keys = [
-		{pubkey: payer, isSigner: true, isWritable: true},
-		{pubkey: associatedToken, isSigner: false, isWritable: true},
-		{pubkey: owner, isSigner: false, isWritable: false},
-		{pubkey: mint, isSigner: false, isWritable: false},
-		{pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
-		{pubkey: programId, isSigner: false, isWritable: false},
-		{pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+		{ pubkey: payer, isSigner: true, isWritable: true },
+		{ pubkey: associatedToken, isSigner: false, isWritable: true },
+		{ pubkey: owner, isSigner: false, isWritable: false },
+		{ pubkey: mint, isSigner: false, isWritable: false },
+		{ pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+		{ pubkey: programId, isSigner: false, isWritable: false },
+		{ pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
 	];
 
 	return new TransactionInstruction({
@@ -125,33 +144,39 @@ export async function createInitializeRandomTokenAccountInstructions(
 	mint: PublicKey,
 	owner: PublicKey,
 	keyPair: Keypair,
-	programId = new PublicKey(addresses.TOKEN_PROGRAM_ID),
+	programId = new PublicKey(addresses.TOKEN_PROGRAM_ID)
 ): Promise<TransactionInstruction[]> {
 	const instructions: TransactionInstruction[] = [];
-	const rentLamports = await connection.getMinimumBalanceForRentExemption(TOKEN_ACCOUNT_LEN);
-	instructions.push(SystemProgram.createAccount({
-		fromPubkey: payer,
-		newAccountPubkey: keyPair.publicKey,
-		lamports: rentLamports,
-		space: TOKEN_ACCOUNT_LEN,
-		programId,
-	}));
-	instructions.push(new TransactionInstruction({
-		keys: [
-			{ pubkey: keyPair.publicKey, isWritable: true, isSigner: false },
-			{ pubkey: mint, isWritable: false, isSigner: false },
-			{ pubkey: owner, isWritable: false, isSigner: false },
-			{ pubkey: SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false },
-		],
-		programId,
-		data: Buffer.from([1]),
-	}));
+	const rentLamports = await connection.getMinimumBalanceForRentExemption(
+		TOKEN_ACCOUNT_LEN
+	);
+	instructions.push(
+		SystemProgram.createAccount({
+			fromPubkey: payer,
+			newAccountPubkey: keyPair.publicKey,
+			lamports: rentLamports,
+			space: TOKEN_ACCOUNT_LEN,
+			programId,
+		})
+	);
+	instructions.push(
+		new TransactionInstruction({
+			keys: [
+				{ pubkey: keyPair.publicKey, isWritable: true, isSigner: false },
+				{ pubkey: mint, isWritable: false, isSigner: false },
+				{ pubkey: owner, isWritable: false, isSigner: false },
+				{ pubkey: SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false },
+			],
+			programId,
+			data: Buffer.from([1]),
+		})
+	);
 	return instructions;
 }
 
-
 const ApproveInstructionData = struct<any>([
-	u8('instruction'), blob(8, 'amount')
+	u8('instruction'),
+	blob(8, 'amount'),
 ]);
 
 export function createApproveInstruction(
@@ -162,9 +187,9 @@ export function createApproveInstruction(
 	programId = new PublicKey(addresses.TOKEN_PROGRAM_ID)
 ): TransactionInstruction {
 	const keys: Array<AccountMeta> = [
-		{pubkey: account, isSigner: false, isWritable: true},
-		{pubkey: delegate, isSigner: false, isWritable: false},
-		{pubkey: owner, isSigner: true, isWritable: false},
+		{ pubkey: account, isSigner: false, isWritable: true },
+		{ pubkey: delegate, isSigner: false, isWritable: false },
+		{ pubkey: owner, isSigner: true, isWritable: false },
 	];
 
 	const data = Buffer.alloc(ApproveInstructionData.span);
@@ -175,28 +200,27 @@ export function createApproveInstruction(
 		},
 		data
 	);
-	return new TransactionInstruction({keys, programId, data});
+	return new TransactionInstruction({ keys, programId, data });
 }
 
 const SyncNativeInstructionData = struct<any>([u8('instruction')]);
 
 export function createSyncNativeInstruction(
-	account: PublicKey): TransactionInstruction {
-	const keys = [{pubkey: account, isSigner: false, isWritable: true}];
+	account: PublicKey
+): TransactionInstruction {
+	const keys = [{ pubkey: account, isSigner: false, isWritable: true }];
 
 	const data = Buffer.alloc(SyncNativeInstructionData.span);
-	SyncNativeInstructionData.encode({instruction: 17}, data);
+	SyncNativeInstructionData.encode({ instruction: 17 }, data);
 
 	return new TransactionInstruction({
 		keys,
 		programId: new PublicKey(addresses.TOKEN_PROGRAM_ID),
-		data
+		data,
 	});
 }
 
-const CloseAccountInstructionData = struct<any>([
-	u8('instruction')
-]);
+const CloseAccountInstructionData = struct<any>([u8('instruction')]);
 
 export function createCloseAccountInstruction(
 	account: PublicKey,
@@ -205,9 +229,9 @@ export function createCloseAccountInstruction(
 	programId = new PublicKey(addresses.TOKEN_PROGRAM_ID)
 ): TransactionInstruction {
 	const keys: Array<AccountMeta> = [
-		{pubkey: account, isSigner: false, isWritable: true},
-		{pubkey: destination, isSigner: false, isWritable: true},
-		{pubkey: owner, isSigner: true, isWritable: false},
+		{ pubkey: account, isSigner: false, isWritable: true },
+		{ pubkey: destination, isSigner: false, isWritable: true },
+		{ pubkey: owner, isSigner: true, isWritable: false },
 	];
 
 	const data = Buffer.alloc(CloseAccountInstructionData.span);
@@ -217,11 +241,12 @@ export function createCloseAccountInstruction(
 		},
 		data
 	);
-	return new TransactionInstruction({keys, programId, data});
+	return new TransactionInstruction({ keys, programId, data });
 }
 
 const SplTransferInstructionData = struct<any>([
-	u8('instruction'), blob(8, 'amount')
+	u8('instruction'),
+	blob(8, 'amount'),
 ]);
 
 export function createSplTransferInstruction(
@@ -232,9 +257,9 @@ export function createSplTransferInstruction(
 	programId = new PublicKey(addresses.TOKEN_PROGRAM_ID)
 ): TransactionInstruction {
 	const keys: Array<AccountMeta> = [
-		{pubkey: source, isSigner: false, isWritable: true},
-		{pubkey: destination, isSigner: false, isWritable: true},
-		{pubkey: owner, isSigner: true, isWritable: false},
+		{ pubkey: source, isSigner: false, isWritable: true },
+		{ pubkey: destination, isSigner: false, isWritable: true },
+		{ pubkey: owner, isSigner: true, isWritable: false },
 	];
 
 	const data = Buffer.alloc(SplTransferInstructionData.span);
@@ -245,46 +270,53 @@ export function createSplTransferInstruction(
 		},
 		data
 	);
-	return new TransactionInstruction({keys, programId, data});
+	return new TransactionInstruction({ keys, programId, data });
 }
 
-export const solMint = new PublicKey('So11111111111111111111111111111111111111112');
+export const solMint = new PublicKey(
+	'So11111111111111111111111111111111111111112'
+);
 
 export async function wrapSol(
-	owner: PublicKey, amount: number,
-	signTransaction: SolanaTransactionSigner, connection?: Connection
+	owner: PublicKey,
+	amount: number,
+	signTransaction: SolanaTransactionSigner,
+	connection?: Connection
 ): Promise<{
-	signature: string,
-	serializedTrx: Uint8Array,
+	signature: string;
+	serializedTrx: Uint8Array;
 }> {
-	const solanaConnection = connection ?? new Connection('https://rpc.ankr.com/solana');
+	const solanaConnection =
+		connection ?? new Connection('https://rpc.ankr.com/solana');
 	const toAccount = getAssociatedTokenAddress(solMint, owner, false);
 
-	const {
-		blockhash,
-		lastValidBlockHeight
-	} = await solanaConnection.getLatestBlockhash();
+	const { blockhash, lastValidBlockHeight } =
+		await solanaConnection.getLatestBlockhash();
 	const trx = new Transaction({
 		feePayer: owner,
 		blockhash,
 		lastValidBlockHeight,
 	});
 
-	const toAccountData = await solanaConnection.getAccountInfo(toAccount, 'finalized');
+	const toAccountData = await solanaConnection.getAccountInfo(
+		toAccount,
+		'finalized'
+	);
 	if (!toAccountData || toAccountData.data.length === 0) {
-		trx.add(createAssociatedTokenAccountInstruction(
-			owner, toAccount, owner, solMint
-		));
+		trx.add(
+			createAssociatedTokenAccountInstruction(owner, toAccount, owner, solMint)
+		);
 	}
 
-	trx.add(SystemProgram.transfer({
-		fromPubkey: owner,
-		toPubkey: toAccount,
-		lamports: getAmountOfFractionalAmount(amount, 9),
-	}));
+	trx.add(
+		SystemProgram.transfer({
+			fromPubkey: owner,
+			toPubkey: toAccount,
+			lamports: getAmountOfFractionalAmount(amount, 9),
+		})
+	);
 
 	trx.add(createSyncNativeInstruction(toAccount));
-
 
 	const signedTrx = await signTransaction(trx);
 	return await submitTransactionWithRetry({
@@ -296,21 +328,21 @@ export async function wrapSol(
 }
 
 export async function unwrapSol(
-	owner: PublicKey, amount: number,
-	signTransaction: SolanaTransactionSigner, connection?: Connection
+	owner: PublicKey,
+	amount: number,
+	signTransaction: SolanaTransactionSigner,
+	connection?: Connection
 ): Promise<{
-	signature: string,
-	serializedTrx: Uint8Array,
+	signature: string;
+	serializedTrx: Uint8Array;
 }> {
-	const solanaConnection = connection ??
-		new Connection('https://rpc.ankr.com/solana');
+	const solanaConnection =
+		connection ?? new Connection('https://rpc.ankr.com/solana');
 	const fromAccount = getAssociatedTokenAddress(solMint, owner, false);
 	const delegate = Keypair.generate();
 
-	const {
-		blockhash,
-		lastValidBlockHeight,
-	} = await solanaConnection.getLatestBlockhash();
+	const { blockhash, lastValidBlockHeight } =
+		await solanaConnection.getLatestBlockhash();
 	const trx = new Transaction({
 		feePayer: owner,
 		blockhash,
@@ -318,20 +350,29 @@ export async function unwrapSol(
 	});
 
 	const toAccount = getAssociatedTokenAddress(
-		solMint, delegate.publicKey, false);
-	trx.add(createAssociatedTokenAccountInstruction(
-		owner, toAccount, delegate.publicKey, solMint
-	));
+		solMint,
+		delegate.publicKey,
+		false
+	);
+	trx.add(
+		createAssociatedTokenAccountInstruction(
+			owner,
+			toAccount,
+			delegate.publicKey,
+			solMint
+		)
+	);
 
-	trx.add(createSplTransferInstruction(
-		fromAccount, toAccount, owner,
-		getAmountOfFractionalAmount(amount, 9)
-	));
+	trx.add(
+		createSplTransferInstruction(
+			fromAccount,
+			toAccount,
+			owner,
+			getAmountOfFractionalAmount(amount, 9)
+		)
+	);
 
-	trx.add(createCloseAccountInstruction(
-		toAccount, owner, delegate.publicKey
-	));
-
+	trx.add(createCloseAccountInstruction(toAccount, owner, delegate.publicKey));
 
 	trx.partialSign(delegate);
 	const signedTrx = await signTransaction(trx);
@@ -351,13 +392,13 @@ export function deserializeInstructionInfo(instruction: InstructionInfo) {
 			isSigner: key.isSigner,
 			isWritable: key.isWritable,
 		})),
-		data: Buffer.from(instruction.data, "base64"),
+		data: Buffer.from(instruction.data, 'base64'),
 	});
 }
 
 export async function getAddressLookupTableAccounts(
 	keys: string[],
-	connection: Connection,
+	connection: Connection
 ): Promise<AddressLookupTableAccount[]> {
 	const addressLookupTableAccountInfos =
 		await connection.getMultipleAccountsInfo(
@@ -379,21 +420,27 @@ export async function getAddressLookupTableAccounts(
 }
 
 type SolanaClientSwapInstructions = {
-	swapInstruction: TransactionInstruction,
-	cleanupInstruction: TransactionInstruction,
-	computeBudgetInstructions: TransactionInstruction[],
-	setupInstructions: TransactionInstruction[],
-	addressLookupTableAddresses: string[]
+	swapInstruction: TransactionInstruction;
+	cleanupInstruction: TransactionInstruction;
+	computeBudgetInstructions: TransactionInstruction[];
+	setupInstructions: TransactionInstruction[];
+	addressLookupTableAddresses: string[];
 };
 
-export function decentralizeClientSwapInstructions(params: SolanaClientSwap, connection: Connection): SolanaClientSwapInstructions {
+export function decentralizeClientSwapInstructions(
+	params: SolanaClientSwap,
+	connection: Connection
+): SolanaClientSwapInstructions {
 	const swapInstruction = deserializeInstructionInfo(params.swapInstruction);
-	const cleanupInstruction = params.cleanupInstruction ?
-		deserializeInstructionInfo(params.cleanupInstruction) : null;
-	const computeBudgetInstructions = params.computeBudgetInstructions ?
-		params.computeBudgetInstructions.map(deserializeInstructionInfo) : [];
-	const setupInstructions = params.setupInstructions ?
-		params.setupInstructions.map(deserializeInstructionInfo) : [];
+	const cleanupInstruction = params.cleanupInstruction
+		? deserializeInstructionInfo(params.cleanupInstruction)
+		: null;
+	const computeBudgetInstructions = params.computeBudgetInstructions
+		? params.computeBudgetInstructions.map(deserializeInstructionInfo)
+		: [];
+	const setupInstructions = params.setupInstructions
+		? params.setupInstructions.map(deserializeInstructionInfo)
+		: [];
 
 	return {
 		swapInstruction,
@@ -406,7 +453,8 @@ export function decentralizeClientSwapInstructions(params: SolanaClientSwap, con
 
 export function getAnchorInstructionData(name: string): Buffer {
 	let preimage = `global:${name}`;
-	return Buffer.from(sha256.digest(preimage)).subarray(0, 8);
+
+	return Buffer.from(sha256(toUtf8Bytes(preimage))).subarray(0, 8);
 }
 
 export async function decideRelayer(): Promise<PublicKey> {
@@ -427,16 +475,19 @@ export function getJitoTipTransfer(
 	lastValidBlockHeight: number,
 	options: JitoBundleOptions
 ): Transaction {
-	const jitoAccount = options.jitoAccount || 'Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY';
+	const jitoAccount =
+		options.jitoAccount || 'Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY';
 	return new Transaction({
 		feePayer: new PublicKey(swapper),
 		blockhash,
 		lastValidBlockHeight,
-	}).add(SystemProgram.transfer({
-		fromPubkey: new PublicKey(swapper),
-		toPubkey: new PublicKey(jitoAccount),
-		lamports: options.tipLamports,
-	}));
+	}).add(
+		SystemProgram.transfer({
+			fromPubkey: new PublicKey(swapper),
+			toPubkey: new PublicKey(jitoAccount),
+			lamports: options.tipLamports,
+		})
+	);
 }
 
 export async function sendJitoBundle(
@@ -453,17 +504,21 @@ export async function sendJitoBundle(
 			jsonrpc: '2.0',
 			id: 1,
 			method: 'sendBundle',
-			params: [signedTrxs.map((trx) => bs58.encode(trx))],
+			params: [signedTrxs.map((trx) => encodeBase58(trx))],
 		};
-		const res = await fetch(options.jitoSendUrl || 'https://mainnet.block-engine.jito.wtf/api/v1/bundles', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(bundle),
-		});
+		const res = await fetch(
+			options.jitoSendUrl ||
+				'https://mainnet.block-engine.jito.wtf/api/v1/bundles',
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(bundle),
+			}
+		);
 		if (res.status !== 200 && res.status !== 201) {
-				throw new Error('Send Jito bundle failed');
+			throw new Error('Send Jito bundle failed');
 		} else {
 			const result = await res.json();
 			return result.result;
@@ -500,7 +555,13 @@ async function getJitoBundleStatuses(bundleIds: string[], jitoApiUrl: string) {
 			const data = await response.json();
 
 			if (data.error) {
-				throw new Error(`Error getting bundle statuses: ${JSON.stringify(data.error, null, 2)}`);
+				throw new Error(
+					`Error getting bundle statuses: ${JSON.stringify(
+						data.error,
+						null,
+						2
+					)}`
+				);
 			}
 
 			return data.result;
@@ -508,30 +569,40 @@ async function getJitoBundleStatuses(bundleIds: string[], jitoApiUrl: string) {
 			attempt++;
 			await wait(400);
 			if (attempt >= maxRetries) {
-				throw new Error(`Failed to fetch bundle statuses after ${maxRetries} attempts: ${error.message}`);
+				throw new Error(
+					`Failed to fetch bundle statuses after ${maxRetries} attempts: ${error.message}`
+				);
 			}
 		}
 	}
 }
-
 
 export async function confirmJitoBundleId(
 	bundleId: string,
 	options: JitoBundleOptions,
 	lastValidBlockHeight: number,
 	mayanTxSignature: string,
-	connection: Connection,
+	connection: Connection
 ) {
 	const timeout = 30 * 3000;
 	const startTime = Date.now();
-	while (Date.now() - startTime < timeout && (await connection.getBlockHeight()) <= lastValidBlockHeight) {
+	while (
+		Date.now() - startTime < timeout &&
+		(await connection.getBlockHeight()) <= lastValidBlockHeight
+	) {
 		await wait(350);
 		const bundleStatuses = await getJitoBundleStatuses(
 			[bundleId],
-			options.jitoSendUrl || 'https://mainnet.block-engine.jito.wtf/api/v1/bundles',
+			options.jitoSendUrl ||
+				'https://mainnet.block-engine.jito.wtf/api/v1/bundles'
 		);
 
-		if (bundleStatuses && bundleStatuses.value && bundleStatuses.value.length > 0 && bundleStatuses.value[0]) {
+		if (
+			bundleStatuses &&
+			bundleStatuses.value &&
+			bundleStatuses.value.length > 0 &&
+			bundleStatuses.value[0]
+		) {
 			console.log('===>', bundleStatuses.value[0]);
 			const status = bundleStatuses.value[0].confirmation_status;
 			if (status === 'confirmed' || status === 'finalized') {
@@ -549,13 +620,12 @@ export async function confirmJitoBundleId(
 	throw new Error('Bundle not confirmed, timeout');
 }
 
-
 export async function broadcastJitoBundleId(bundleId: string): Promise<void> {
 	try {
-		await fetch("https://explorer-api.mayan.finance/v3/submit/jito-bundle", {
-			method: "POST",
+		await fetch('https://explorer-api.mayan.finance/v3/submit/jito-bundle', {
+			method: 'POST',
 			headers: {
-				"Content-Type": "application/json",
+				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({ bundleId }),
 		});
@@ -570,7 +640,9 @@ function validateJupCleanupInstruction(instruction: TransactionInstruction) {
 	}
 	if (
 		!instruction.programId.equals(new PublicKey(addresses.TOKEN_PROGRAM_ID)) &&
-		!instruction.programId.equals(new PublicKey(addresses.TOKEN_2022_PROGRAM_ID))
+		!instruction.programId.equals(
+			new PublicKey(addresses.TOKEN_2022_PROGRAM_ID)
+		)
 	) {
 		throw new Error('Invalid cleanup instruction:: programId');
 	}
@@ -582,7 +654,10 @@ function validateJupCleanupInstruction(instruction: TransactionInstruction) {
 	}
 }
 
-function validateJupSetupInstructions(instructions: TransactionInstruction[], owner?: PublicKey) {
+function validateJupSetupInstructions(
+	instructions: TransactionInstruction[],
+	owner?: PublicKey
+) {
 	if (instructions.length < 1) {
 		return;
 	}
@@ -591,14 +666,24 @@ function validateJupSetupInstructions(instructions: TransactionInstruction[], ow
 	}
 	instructions.forEach((instruction) => {
 		if (
-			!instruction.programId.equals(new PublicKey(addresses.ASSOCIATED_TOKEN_PROGRAM_ID)) &&
+			!instruction.programId.equals(
+				new PublicKey(addresses.ASSOCIATED_TOKEN_PROGRAM_ID)
+			) &&
 			!instruction.programId.equals(SystemProgram.programId) &&
-			!instruction.programId.equals(new PublicKey(addresses.TOKEN_PROGRAM_ID)) &&
-			!instruction.programId.equals(new PublicKey(addresses.TOKEN_2022_PROGRAM_ID))
+			!instruction.programId.equals(
+				new PublicKey(addresses.TOKEN_PROGRAM_ID)
+			) &&
+			!instruction.programId.equals(
+				new PublicKey(addresses.TOKEN_2022_PROGRAM_ID)
+			)
 		) {
 			throw new Error('Invalid setup instruction:: programId');
 		}
-		if (instruction.programId.equals(new PublicKey(addresses.ASSOCIATED_TOKEN_PROGRAM_ID))) {
+		if (
+			instruction.programId.equals(
+				new PublicKey(addresses.ASSOCIATED_TOKEN_PROGRAM_ID)
+			)
+		) {
 			if (Uint8Array.from(instruction.data).length === 1) {
 				if (Uint8Array.from(instruction.data)[0] !== 1) {
 					throw new Error('Invalid setup instruction:: data');
@@ -612,28 +697,49 @@ function validateJupSetupInstructions(instructions: TransactionInstruction[], ow
 			}
 			const wSolAccount = getAssociatedTokenAddress(solMint, owner, true);
 			if (instruction.data.readUint32LE() !== 2) {
-				throw new Error('Invalid setup instruction:: invalid system program instruction');
+				throw new Error(
+					'Invalid setup instruction:: invalid system program instruction'
+				);
 			}
 			if (!instruction.keys[1].pubkey.equals(wSolAccount)) {
-				throw new Error('Invalid setup instruction:: invalid wrap transfer dest');
+				throw new Error(
+					'Invalid setup instruction:: invalid wrap transfer dest'
+				);
 			}
 		} else {
 			if (instruction.data.toString('base64') !== 'EQ==') {
-				throw new Error('Invalid setup instruction:: invalid token program instruction');
+				throw new Error(
+					'Invalid setup instruction:: invalid token program instruction'
+				);
 			}
 		}
 	});
 }
 
-function validateJupSwapInstruction(instruction: TransactionInstruction, validDestAccount: PublicKey) {
-	if (!instruction.programId.equals(new PublicKey('JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4'))) {
+function validateJupSwapInstruction(
+	instruction: TransactionInstruction,
+	validDestAccount: PublicKey
+) {
+	if (
+		!instruction.programId.equals(
+			new PublicKey('JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4')
+		)
+	) {
 		throw new Error('Invalid swap instruction:: programId');
 	}
-	if (instruction.data.subarray(0, 8).toString('hex') === getAnchorInstructionData('shared_accounts_route').toString('hex')) {
+	if (
+		instruction.data.subarray(0, 8).toString('hex') ===
+		getAnchorInstructionData('shared_accounts_route').toString('hex')
+	) {
 		if (!instruction.keys[6].pubkey.equals(validDestAccount)) {
-			throw new Error(`Invalid swap instruction shared_accounts_route:: dest account`);
+			throw new Error(
+				`Invalid swap instruction shared_accounts_route:: dest account`
+			);
 		}
-	} else if (instruction.data.subarray(0, 8).toString('hex') === getAnchorInstructionData('route').toString('hex')) {
+	} else if (
+		instruction.data.subarray(0, 8).toString('hex') ===
+		getAnchorInstructionData('route').toString('hex')
+	) {
 		if (!instruction.keys[4].pubkey.equals(validDestAccount)) {
 			throw new Error('Invalid swap instruction route:: dest account');
 		}
@@ -642,7 +748,9 @@ function validateJupSwapInstruction(instruction: TransactionInstruction, validDe
 	}
 }
 
-function validateJupComputeBudgetInstructions(instructions: TransactionInstruction[]) {
+function validateJupComputeBudgetInstructions(
+	instructions: TransactionInstruction[]
+) {
 	instructions.forEach((instruction) => {
 		if (!instruction.programId.equals(ComputeBudgetProgram.programId)) {
 			throw new Error('Invalid compute budget instruction:: programId');
@@ -656,13 +764,16 @@ function validateJupComputeBudgetInstructions(instructions: TransactionInstructi
 	});
 }
 
-export function validateJupSwap(swap: SolanaClientSwapInstructions,  validDestAccount: PublicKey, validWrapOwner?: PublicKey,) {
+export function validateJupSwap(
+	swap: SolanaClientSwapInstructions,
+	validDestAccount: PublicKey,
+	validWrapOwner?: PublicKey
+) {
 	validateJupComputeBudgetInstructions(swap.computeBudgetInstructions);
 	validateJupSetupInstructions(swap.setupInstructions, validWrapOwner);
 	validateJupSwapInstruction(swap.swapInstruction, validDestAccount);
 	validateJupCleanupInstruction(swap.cleanupInstruction);
 }
-
 
 export function createTransferAllAndCloseInstruction(
 	owner: PublicKey,
@@ -674,14 +785,14 @@ export function createTransferAllAndCloseInstruction(
 ): TransactionInstruction {
 	return new TransactionInstruction({
 		keys: [
-			{pubkey: owner, isSigner: true, isWritable: false},
-			{pubkey: tokenAccount, isSigner: false, isWritable: true},
-			{pubkey: transferDestination, isSigner: false, isWritable: true},
-			{pubkey: mint, isSigner: false, isWritable: false},
-			{pubkey: closeDestination, isSigner: false, isWritable: true},
-			{pubkey: tokenProgramId, isSigner: false, isWritable: false},
+			{ pubkey: owner, isSigner: true, isWritable: false },
+			{ pubkey: tokenAccount, isSigner: false, isWritable: true },
+			{ pubkey: transferDestination, isSigner: false, isWritable: true },
+			{ pubkey: mint, isSigner: false, isWritable: false },
+			{ pubkey: closeDestination, isSigner: false, isWritable: true },
+			{ pubkey: tokenProgramId, isSigner: false, isWritable: false },
 		],
 		programId: new PublicKey('B96dV3Luxzo6SokJx3xt8i5y8Mb7HRR6Eec8hCjJDT69'),
 		data: getAnchorInstructionData('transfer_all_and_close'),
-	})
+	});
 }

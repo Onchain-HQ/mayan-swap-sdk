@@ -1,9 +1,7 @@
 {
 	"$schema": "https://json.schemastore.org/tsconfig",
 	"compilerOptions": {
-		"lib": [
-			"es2021"
-		],
+		"lib": ["es2021", "DOM"],
 		"target": "es2021",
 		// TODO: Add this back
 		"strict": false,
@@ -16,11 +14,6 @@
 		"declaration": true,
 		"outDir": "./lib"
 	},
-	"include": [
-		"src"
-	],
-	"exclude": [
-		"node_modules",
-		"**/__tests__/*"
-	]
+	"include": ["src"],
+	"exclude": ["node_modules", "**/__tests__/*"]
 }

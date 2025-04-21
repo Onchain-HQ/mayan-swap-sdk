@@ -1,20 +1,16 @@
-import {
-	Contract,
-	toBeHex,
-	ZeroAddress,
-	TransactionRequest
-} from 'ethers';
+import { Contract, toBeHex, ZeroAddress, TransactionRequest } from 'ethers';
 import { Erc20Permit, EvmForwarderParams, Quote } from '../types';
 import {
 	nativeAddressToHexString,
-	getAmountOfFractionalAmount, getWormholeChainIdByName,
-	getWormholeChainIdById, getGasDecimal, ZeroPermit
+	getAmountOfFractionalAmount,
+	getWormholeChainIdByName,
+	getWormholeChainIdById,
+	getGasDecimal,
+	ZeroPermit,
 } from '../utils';
 import addresses from '../addresses';
 import MayanForwarderArtifact from './MayanForwarderArtifact';
-import { Buffer } from 'buffer';
 import ShuttleArtifact from './ShuttleArtifact';
-
 
 const shuttleConstants = {
 	FAST_MODE_FLAG: 1,
@@ -25,19 +21,21 @@ const shuttleConstants = {
 	OUTPUT_USDC_MODE: 0,
 	OUTPUT_NATIVE_MODE: 1,
 	OUTPUT_OTHER_MODE: 2,
-}
+};
 
 function writeBigIntTo16BytesBuffer(value: bigint): Buffer {
 	// Validate the range of the BigInt
 	const maxUint128 = (1n << 128n) - 1n; // 2^128 - 1
 	if (value < 0n || value > maxUint128) {
-		throw new RangeError("Value must fit in an unsigned 128-bit integer (0 <= value < 2^128)");
+		throw new RangeError(
+			'Value must fit in an unsigned 128-bit integer (0 <= value < 2^128)'
+		);
 	}
 
 	const buffer = Buffer.alloc(16);
 
 	for (let i = 15; i >= 0; i--) {
-		buffer[i] = Number(value & 0xFFn);
+		buffer[i] = Number(value & 0xffn);
 		value >>= 8n;
 	}
 
@@ -45,7 +43,9 @@ function writeBigIntTo16BytesBuffer(value: bigint): Buffer {
 }
 
 export function getShuttleParams(
-	quote: Quote, destinationAddress: string, signerChainId: string | number
+	quote: Quote,
+	destinationAddress: string,
+	signerChainId: string | number
 ): {
 	destAddr: string;
 	destChainId: number;
@@ -62,7 +62,11 @@ export function getShuttleParams(
 	const sourceChainId = getWormholeChainIdByName(quote.fromChain);
 	const destChainId = getWormholeChainIdByName(quote.toChain);
 	if (sourceChainId !== signerWormholeChainId) {
-		throw new Error(`Signer chain id(${Number(signerChainId)}) and quote from chain are not same! ${sourceChainId} !== ${signerWormholeChainId}`);
+		throw new Error(
+			`Signer chain id(${Number(
+				signerChainId
+			)}) and quote from chain are not same! ${sourceChainId} !== ${signerWormholeChainId}`
+		);
 	}
 
 	let bytes = [];
@@ -90,7 +94,9 @@ export function getShuttleParams(
 	bytes.push(...gasDropBytes); // [12..15]
 
 	const maxRelayerFeeBuffer8Bytes = Buffer.alloc(8);
-	maxRelayerFeeBuffer8Bytes.writeBigUInt64BE(BigInt(shuttleParams.maxRelayingFee));
+	maxRelayerFeeBuffer8Bytes.writeBigUInt64BE(
+		BigInt(shuttleParams.maxRelayingFee)
+	);
 	const maxRelayerFeeBytes = maxRelayerFeeBuffer8Bytes.subarray(2);
 	bytes.push(...maxRelayerFeeBytes); // [16..21]
 
@@ -105,7 +111,6 @@ export function getShuttleParams(
 		const amountInBuffer = Buffer.alloc(8);
 		amountInBuffer.writeBigUInt64BE(amountIn);
 		bytes.push(...amountInBuffer);
-
 	} else {
 		// as forwarder contract overrides the amount in, we can set the u128 to 0
 		bytes.push(...Array(16).fill(0));
@@ -119,15 +124,22 @@ export function getShuttleParams(
 			bytes.push(shuttleConstants.OUTPUT_NATIVE_MODE);
 		} else {
 			bytes.push(shuttleConstants.OUTPUT_OTHER_MODE);
-			const tokenOut = Buffer.from(nativeAddressToHexString(quote.toToken.contract, destChainId).slice(2), 'hex');
+			const tokenOut = Buffer.from(
+				nativeAddressToHexString(quote.toToken.contract, destChainId).slice(2),
+				'hex'
+			);
 			bytes.push(...tokenOut);
 		}
 		const swapDeadlineBuffer = Buffer.alloc(4);
 		swapDeadlineBuffer.writeUInt32BE(Number(BigInt(quote.deadline64)));
 		bytes.push(...swapDeadlineBuffer);
 
-		const minAmountOut = getAmountOfFractionalAmount(quote.minAmountOut, quote.toToken.decimals);
-		if (quote.toChain === 'solana') { // limit_amount should be 8 bytes (u64)
+		const minAmountOut = getAmountOfFractionalAmount(
+			quote.minAmountOut,
+			quote.toToken.decimals
+		);
+		if (quote.toChain === 'solana') {
+			// limit_amount should be 8 bytes (u64)
 			bytes.push(...Array(8).fill(0));
 			const minAmountOutBuffer = Buffer.alloc(8);
 			minAmountOutBuffer.writeBigUInt64BE(minAmountOut);
@@ -138,12 +150,14 @@ export function getShuttleParams(
 		}
 		const swapPath = Buffer.from(shuttleParams.path.slice(2), 'hex');
 		bytes.push(...swapPath);
-
 	} else {
 		bytes.push(shuttleConstants.OUTPUT_USDC_MODE);
 	}
 
-	const destinationAddressHex = nativeAddressToHexString(destinationAddress, destChainId);
+	const destinationAddressHex = nativeAddressToHexString(
+		destinationAddress,
+		destChainId
+	);
 
 	return {
 		destAddr: destinationAddressHex,
@@ -151,13 +165,18 @@ export function getShuttleParams(
 		serializedParams: `0x${Buffer.from(bytes).toString('hex')}`,
 		contractAddress: quote.shuttleContract,
 		amountIn,
-		bridgeFee: getAmountOfFractionalAmount(quote.bridgeFee, getGasDecimal(quote.fromChain)),
-	}
+		bridgeFee: getAmountOfFractionalAmount(
+			quote.bridgeFee,
+			getGasDecimal(quote.fromChain)
+		),
+	};
 }
 
 export function getShuttleFromEvmTxPayload(
-	quote: Quote, destinationAddress: string,
-	signerChainId: number | string, permit: Erc20Permit | null
+	quote: Quote,
+	destinationAddress: string,
+	signerChainId: number | string,
+	permit: Erc20Permit | null
 ): TransactionRequest & { _forwarder: EvmForwarderParams } {
 	if (quote.type !== 'SHUTTLE') {
 		throw new Error('Quote type is not SHUTTLE');
@@ -170,7 +189,10 @@ export function getShuttleFromEvmTxPayload(
 	signerChainId = Number(signerChainId);
 
 	const _permit = permit || ZeroPermit;
-	const forwarder = new Contract(addresses.MAYAN_FORWARDER_CONTRACT, MayanForwarderArtifact.abi);
+	const forwarder = new Contract(
+		addresses.MAYAN_FORWARDER_CONTRACT,
+		MayanForwarderArtifact.abi
+	);
 
 	const {
 		destAddr,
@@ -182,12 +204,17 @@ export function getShuttleFromEvmTxPayload(
 	} = getShuttleParams(quote, destinationAddress, signerChainId);
 
 	let shuttleCallData: string;
-	const shuttleContract = new Contract(shuttleContractAddress, ShuttleArtifact.abi);
-
-	shuttleCallData = shuttleContract.interface.encodeFunctionData(
-		'initiate',
-		[destAddr, amountIn, destChainId, serializedParams]
+	const shuttleContract = new Contract(
+		shuttleContractAddress,
+		ShuttleArtifact.abi
 	);
+
+	shuttleCallData = shuttleContract.interface.encodeFunctionData('initiate', [
+		destAddr,
+		amountIn,
+		destChainId,
+		serializedParams,
+	]);
 
 	let forwarderMethod: string;
 	let forwarderParams: any[];
@@ -195,16 +222,31 @@ export function getShuttleFromEvmTxPayload(
 
 	if (quote.fromToken.contract === quote.shuttleInputContract) {
 		forwarderMethod = 'forwardERC20';
-		forwarderParams = [quote.shuttleInputContract, amountIn, _permit, shuttleContractAddress, shuttleCallData];
+		forwarderParams = [
+			quote.shuttleInputContract,
+			amountIn,
+			_permit,
+			shuttleContractAddress,
+			shuttleCallData,
+		];
 		value = toBeHex(bridgeFee);
 	} else {
 		const { evmSwapRouterAddress, evmSwapRouterCalldata } = quote;
-		if (!quote.minMiddleAmount || !evmSwapRouterAddress || !evmSwapRouterCalldata) {
-			throw new Error('Shuttle source chain swap requires middle amount, router address and calldata');
+		if (
+			!quote.minMiddleAmount ||
+			!evmSwapRouterAddress ||
+			!evmSwapRouterCalldata
+		) {
+			throw new Error(
+				'Shuttle source chain swap requires middle amount, router address and calldata'
+			);
 		}
 		const tokenIn = quote.fromToken.contract;
 
-		const minMiddleAmount = getAmountOfFractionalAmount(quote.minMiddleAmount, quote.shuttleInputDecimals);
+		const minMiddleAmount = getAmountOfFractionalAmount(
+			quote.minMiddleAmount,
+			quote.shuttleInputDecimals
+		);
 
 		if (quote.fromToken.contract === ZeroAddress) {
 			forwarderMethod = 'swapAndForwardEth';
@@ -234,7 +276,10 @@ export function getShuttleFromEvmTxPayload(
 			value = toBeHex(bridgeFee);
 		}
 	}
-	const data = forwarder.interface.encodeFunctionData(forwarderMethod, forwarderParams);
+	const data = forwarder.interface.encodeFunctionData(
+		forwarderMethod,
+		forwarderParams
+	);
 
 	return {
 		data,
@@ -243,7 +288,7 @@ export function getShuttleFromEvmTxPayload(
 		chainId: signerChainId,
 		_forwarder: {
 			method: forwarderMethod,
-			params: forwarderParams
-		}
+			params: forwarderParams,
+		},
 	};
 }

@@ -1,26 +1,37 @@
-import { ethers, zeroPadValue, parseUnits, formatUnits } from 'ethers';
-import {PublicKey, SystemProgram} from '@solana/web3.js';
-import { Buffer } from 'buffer';
-import addresses  from './addresses';
+import {
+	ethers,
+	zeroPadValue,
+	parseUnits,
+	formatUnits,
+	keccak256,
+} from 'ethers';
+import { PublicKey, SystemProgram } from '@solana/web3.js';
+import addresses from './addresses';
 import { ChainName, Erc20Permit, Quote, ReferrerAddresses } from './types';
-import * as sha3 from 'js-sha3';
-const sha3_256 = sha3.sha3_256;
 
 export const isValidAptosType = (str: string): boolean =>
 	/^(0x)?[0-9a-fA-F]+::\w+::\w+$/.test(str);
 
 export function nativeAddressToHexString(
-	address: string, wChainId: number) : string {
+	address: string,
+	wChainId: number
+): string {
 	if (wChainId === 1) {
 		return zeroPadValue(new PublicKey(address).toBytes(), 32);
 	} else if (
-		wChainId === chains.ethereum || wChainId === chains.bsc || wChainId === chains.polygon ||
-		wChainId === chains.avalanche  || wChainId === chains.arbitrum || wChainId === chains.optimism ||
-		wChainId === chains.base || wChainId === chains.unichain || wChainId === chains.linea
+		wChainId === chains.ethereum ||
+		wChainId === chains.bsc ||
+		wChainId === chains.polygon ||
+		wChainId === chains.avalanche ||
+		wChainId === chains.arbitrum ||
+		wChainId === chains.optimism ||
+		wChainId === chains.base ||
+		wChainId === chains.unichain ||
+		wChainId === chains.linea
 	) {
 		return zeroPadValue(address, 32);
 	} else if (wChainId === chains.aptos && isValidAptosType(address)) {
-		return `0x${sha3_256(address)}`
+		return keccak256(address);
 	} else if (wChainId === chains.sui) {
 		let addressStr = address.startsWith('0x') ? address.substring(2) : address;
 		if (Buffer.from(addressStr, 'hex').length !== 32) {
@@ -35,10 +46,7 @@ export function nativeAddressToHexString(
 
 export function hexToUint8Array(input: string): Uint8Array {
 	return new Uint8Array(
-		Buffer.from(
-			input.startsWith('0x') ? input.substring(2) : input,
-			"hex"
-		)
+		Buffer.from(input.startsWith('0x') ? input.substring(2) : input, 'hex')
 	);
 }
 
@@ -47,7 +55,9 @@ export function getAssociatedTokenAddress(
 	owner: PublicKey,
 	allowOwnerOffCurve = false,
 	programId = new PublicKey(addresses.TOKEN_PROGRAM_ID),
-	associatedTokenProgramId = new PublicKey(addresses.ASSOCIATED_TOKEN_PROGRAM_ID)
+	associatedTokenProgramId = new PublicKey(
+		addresses.ASSOCIATED_TOKEN_PROGRAM_ID
+	)
 ): PublicKey {
 	if (!allowOwnerOffCurve && !PublicKey.isOnCurve(owner.toBuffer())) {
 		throw new Error('TokenOwnerOffCurveError');
@@ -62,12 +72,16 @@ export function getAssociatedTokenAddress(
 }
 
 export function getAmountOfFractionalAmount(
-	amount: string | number, decimals: string | number) : bigint {
+	amount: string | number,
+	decimals: string | number
+): bigint {
 	if (amount === null || amount === undefined) {
 		throw new Error('getAmountOfFractionalAmount: Amount is null or undefined');
 	}
 	if (typeof amount !== 'string' && typeof amount !== 'number') {
-		throw new Error('getAmountOfFractionalAmount: Amount is not a string or number');
+		throw new Error(
+			'getAmountOfFractionalAmount: Amount is not a string or number'
+		);
 	}
 	if (typeof amount === 'string' && amount.length === 0) {
 		throw new Error('getAmountOfFractionalAmount: Amount is empty');
@@ -83,15 +97,17 @@ export function getAmountOfFractionalAmount(
 		throw new Error('getAmountOfFractionalAmount: fixedAmount is null');
 	}
 	const fixedAmount = matchResult[0];
-	return parseUnits(fixedAmount, Number(decimals))
+	return parseUnits(fixedAmount, Number(decimals));
 }
 
 export function getDisplayAmount(
-	inputAmount: ethers.BigNumberish, decimals: string | ethers.BigNumberish) : number {
-	return  Number(formatUnits(inputAmount, decimals))
+	inputAmount: ethers.BigNumberish,
+	decimals: string | ethers.BigNumberish
+): number {
+	return Number(formatUnits(inputAmount, decimals));
 }
 
-const chains: { [index in ChainName]: number }  = {
+const chains: { [index in ChainName]: number } = {
 	solana: 1,
 	ethereum: 2,
 	bsc: 4,
@@ -106,11 +122,11 @@ const chains: { [index in ChainName]: number }  = {
 	linea: 38,
 };
 
-export function getWormholeChainIdByName(chain: string) : number | null {
+export function getWormholeChainIdByName(chain: string): number | null {
 	return chains[chain];
 }
 
-const evmChainIdMap: { [index: string]: number }  = {
+const evmChainIdMap: { [index: string]: number } = {
 	[1]: 2,
 	[56]: 4,
 	[137]: 5,
@@ -133,9 +149,7 @@ export function getEvmChainIdByName(chain: ChainName) {
 	throw new Error(`Unsupported chain: ${chain}`);
 }
 
-
-
-export function getWormholeChainIdById(chainId: number) : number | null {
+export function getWormholeChainIdById(chainId: number): number | null {
 	return evmChainIdMap[chainId];
 }
 
@@ -145,7 +159,9 @@ export function getSdkVersion(): string {
 	return sdkVersion.join('_');
 }
 
-export function checkSdkVersionSupport(minimumVersion: [number, number, number]): boolean {
+export function checkSdkVersionSupport(
+	minimumVersion: [number, number, number]
+): boolean {
 	//major
 	if (sdkVersion[0] < minimumVersion[0]) {
 		return false;
@@ -197,7 +213,7 @@ export const ZeroPermit: Erc20Permit = {
 	v: 0,
 	r: `0x${SystemProgram.programId.toBuffer().toString('hex')}`,
 	s: `0x${SystemProgram.programId.toBuffer().toString('hex')}`,
-}
+};
 
 export function wait(time: number): Promise<void> {
 	return new Promise((resolve) => {
@@ -209,7 +225,7 @@ export function wait(time: number): Promise<void> {
 
 export function getQuoteSuitableReferrerAddress(
 	quote: Quote,
-	referrerAddresses?: ReferrerAddresses,
+	referrerAddresses?: ReferrerAddresses
 ): string | null {
 	if (!quote || !referrerAddresses) {
 		return null;
@@ -235,4 +251,3 @@ export const MCTP_INIT_ORDER_PAYLOAD_ID = 1;
 export const FAST_MCTP_PAYLOAD_TYPE_DEFAULT = 1;
 export const FAST_MCTP_PAYLOAD_TYPE_CUSTOM_PAYLOAD = 2;
 export const FAST_MCTP_PAYLOAD_TYPE_ORDER = 3;
-

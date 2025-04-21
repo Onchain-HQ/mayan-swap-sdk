@@ -1,7 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 import addresses from './addresses';
-import { Buffer } from 'buffer';
-import {ChainName} from "./types";
+import { ChainName } from './types';
 
 export const CCTP_TOKEN_DECIMALS = 6;
 export function getCCTPDomain(chain: ChainName): number {
@@ -31,58 +30,64 @@ export function getCCTPDomain(chain: ChainName): number {
 	}
 }
 
-export function getCCTPBridgePDAs(mint: PublicKey, destinationChain: ChainName): {
-	messageTransmitter: PublicKey,
-	senderAuthority: PublicKey,
-	localToken: PublicKey,
-	tokenMessenger: PublicKey,
-	tokenMinter: PublicKey,
-	remoteTokenMessengerKey: PublicKey,
-	eventAuthCore: PublicKey,
-	eventAuthToken: PublicKey,
+export function getCCTPBridgePDAs(
+	mint: PublicKey,
+	destinationChain: ChainName
+): {
+	messageTransmitter: PublicKey;
+	senderAuthority: PublicKey;
+	localToken: PublicKey;
+	tokenMessenger: PublicKey;
+	tokenMinter: PublicKey;
+	remoteTokenMessengerKey: PublicKey;
+	eventAuthCore: PublicKey;
+	eventAuthToken: PublicKey;
 } {
 	const cctpCoreProgramId = new PublicKey(addresses.CCTP_CORE_PROGRAM_ID);
 	const cctpTokenProgramId = new PublicKey(addresses.CCTP_TOKEN_PROGRAM_ID);
 
 	const [messageTransmitter] = PublicKey.findProgramAddressSync(
 		[Buffer.from('message_transmitter')],
-		cctpCoreProgramId,
+		cctpCoreProgramId
 	);
 
 	const [senderAuthority] = PublicKey.findProgramAddressSync(
 		[Buffer.from('sender_authority')],
-		cctpTokenProgramId,
+		cctpTokenProgramId
 	);
 
 	const [localToken] = PublicKey.findProgramAddressSync(
 		[Buffer.from('local_token'), mint.toBytes()],
-		cctpTokenProgramId,
+		cctpTokenProgramId
 	);
 
 	const [tokenMessenger] = PublicKey.findProgramAddressSync(
 		[Buffer.from('token_messenger')],
-		cctpTokenProgramId,
+		cctpTokenProgramId
 	);
 	const [tokenMinter] = PublicKey.findProgramAddressSync(
 		[Buffer.from('token_minter')],
-		cctpTokenProgramId,
+		cctpTokenProgramId
 	);
 
 	const destinationDomain = getCCTPDomain(destinationChain);
 
 	const [remoteTokenMessengerKey] = PublicKey.findProgramAddressSync(
-		[Buffer.from('remote_token_messenger'), Buffer.from(destinationDomain.toString())],
-		cctpTokenProgramId,
+		[
+			Buffer.from('remote_token_messenger'),
+			Buffer.from(destinationDomain.toString()),
+		],
+		cctpTokenProgramId
 	);
 
 	const [eventAuthCore] = PublicKey.findProgramAddressSync(
 		[Buffer.from('__event_authority')],
-		cctpCoreProgramId,
+		cctpCoreProgramId
 	);
 
 	const [eventAuthToken] = PublicKey.findProgramAddressSync(
 		[Buffer.from('__event_authority')],
-		cctpTokenProgramId,
+		cctpTokenProgramId
 	);
 
 	return {
@@ -94,5 +99,5 @@ export function getCCTPBridgePDAs(mint: PublicKey, destinationChain: ChainName):
 		eventAuthToken,
 		eventAuthCore,
 		localToken,
-	}
+	};
 }

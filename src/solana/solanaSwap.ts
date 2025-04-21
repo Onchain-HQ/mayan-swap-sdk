@@ -9,22 +9,32 @@ import {
 	Transaction,
 	SendOptions,
 	TransactionInstruction,
-	ComputeBudgetProgram, AddressLookupTableAccount, MessageV0, VersionedTransaction
+	ComputeBudgetProgram,
+	AddressLookupTableAccount,
+	MessageV0,
+	VersionedTransaction,
 } from '@solana/web3.js';
-import {blob, struct, u16, u8} from '@solana/buffer-layout';
-import { Quote, ReferrerAddresses, SolanaTransactionSigner, JitoBundleOptions, SwapMessageV0Params } from '../types';
+import { blob, struct, u16, u8 } from '@solana/buffer-layout';
+import {
+	Quote,
+	ReferrerAddresses,
+	SolanaTransactionSigner,
+	JitoBundleOptions,
+	SwapMessageV0Params,
+} from '../types';
 import {
 	getAmountOfFractionalAmount,
-	getAssociatedTokenAddress, getGasDecimalsInSolana,
+	getAssociatedTokenAddress,
+	getGasDecimalsInSolana,
 	getWormholeChainIdByName,
 	hexToUint8Array,
 	nativeAddressToHexString,
 	getSafeU64Blob,
 	getQuoteSuitableReferrerAddress,
 } from '../utils';
-import {Buffer} from 'buffer';
-import addresses from '../addresses'
-import {ZeroAddress} from 'ethers';
+import { Buffer } from 'buffer';
+import addresses from '../addresses';
+import { encodeBase58, ZeroAddress } from 'ethers';
 import { submitSwiftSolanaSwap } from '../api';
 import {
 	createAssociatedTokenAccountInstruction,
@@ -35,12 +45,10 @@ import {
 	getJitoTipTransfer,
 	sendJitoBundle,
 	confirmJitoBundleId,
-	broadcastJitoBundleId
+	broadcastJitoBundleId,
 } from './utils';
-import { createMctpFromSolanaInstructions } from "./solanaMctp";
+import { createMctpFromSolanaInstructions } from './solanaMctp';
 import { createSwiftFromSolanaInstructions } from './solanaSwift';
-import bs58 from 'bs58';
-
 
 const STATE_SIZE = 420;
 
@@ -63,32 +71,51 @@ const SwapLayout = struct<any>([
 ]);
 
 export async function createSwapFromSolanaInstructions(
-	quote: Quote, swapperWalletAddress: string, destinationAddress: string,
+	quote: Quote,
+	swapperWalletAddress: string,
+	destinationAddress: string,
 	referrerAddresses: ReferrerAddresses | null | undefined,
-	connection?: Connection, options: {
-		allowSwapperOffCurve?: boolean,
-		forceSkipCctpInstructions?: boolean,
-		separateSwapTx?: boolean,
+	connection?: Connection,
+	options: {
+		allowSwapperOffCurve?: boolean;
+		forceSkipCctpInstructions?: boolean;
+		separateSwapTx?: boolean;
 	} = {}
 ): Promise<{
-	instructions: Array<TransactionInstruction>,
-	signers: Array<Keypair>,
-	lookupTables: Array<AddressLookupTableAccount>,
-	swapMessageV0Params: SwapMessageV0Params | null,
+	instructions: Array<TransactionInstruction>;
+	signers: Array<Keypair>;
+	lookupTables: Array<AddressLookupTableAccount>;
+	swapMessageV0Params: SwapMessageV0Params | null;
 }> {
-
-	const referrerAddress = getQuoteSuitableReferrerAddress(quote, referrerAddresses);
+	const referrerAddress = getQuoteSuitableReferrerAddress(
+		quote,
+		referrerAddresses
+	);
 
 	if (quote.type === 'MCTP') {
-		return createMctpFromSolanaInstructions(quote, swapperWalletAddress, destinationAddress, referrerAddress, connection, options);
+		return createMctpFromSolanaInstructions(
+			quote,
+			swapperWalletAddress,
+			destinationAddress,
+			referrerAddress,
+			connection,
+			options
+		);
 	}
 	if (quote.type === 'SWIFT') {
-		return createSwiftFromSolanaInstructions(quote, swapperWalletAddress, destinationAddress, referrerAddress, connection, options);
+		return createSwiftFromSolanaInstructions(
+			quote,
+			swapperWalletAddress,
+			destinationAddress,
+			referrerAddress,
+			connection,
+			options
+		);
 	}
 
 	let instructions: Array<TransactionInstruction> = [];
-	const solanaConnection = connection ??
-		new Connection('https://rpc.ankr.com/solana');
+	const solanaConnection =
+		connection ?? new Connection('https://rpc.ankr.com/solana');
 	const mayanProgram = new PublicKey(addresses.MAYAN_PROGRAM_ID);
 	const tokenProgram = new PublicKey(addresses.TOKEN_PROGRAM_ID);
 	const swapper = new PublicKey(swapperWalletAddress);
@@ -96,9 +123,11 @@ export async function createSwapFromSolanaInstructions(
 	const auctionAddr = new PublicKey(addresses.AUCTION_PROGRAM_ID);
 
 	if (quote.suggestedPriorityFee > 0) {
-		instructions.push(ComputeBudgetProgram.setComputeUnitPrice({
-			microLamports: quote.suggestedPriorityFee,
-		}))
+		instructions.push(
+			ComputeBudgetProgram.setComputeUnitPrice({
+				microLamports: quote.suggestedPriorityFee,
+			})
+		);
 	}
 
 	let referrerAddr: PublicKey;
@@ -110,14 +139,11 @@ export async function createSwapFromSolanaInstructions(
 
 	const [mayanFee, mayanFeeNonce] = PublicKey.findProgramAddressSync(
 		[Buffer.from('MAYANFEE')],
-		mayanProgram,
+		mayanProgram
 	);
 	const [referrerFee, referrerFeeNonce] = PublicKey.findProgramAddressSync(
-		[
-			Buffer.from('REFERRERFEE'),
-			referrerAddr.toBuffer(),
-		],
-		mayanProgram,
+		[Buffer.from('REFERRERFEE'), referrerAddr.toBuffer()],
+		mayanProgram
 	);
 
 	const msg1 = Keypair.generate();
@@ -128,91 +154,108 @@ export async function createSwapFromSolanaInstructions(
 			Buffer.from(msg1.publicKey.toBytes()),
 			Buffer.from(msg2.publicKey.toBytes()),
 		],
-		mayanProgram,
+		mayanProgram
 	);
 	const fromMint = new PublicKey(quote.fromToken.mint);
 	const toMint = new PublicKey(quote.toToken.mint);
 	const fromAccount = getAssociatedTokenAddress(fromMint, swapper);
 	const toAccount = getAssociatedTokenAddress(fromMint, state, true);
 
-	const [
-		[fromAccountData, toAccountData],
-		stateRent,
-		relayer,
-	] = await Promise.all([
-		solanaConnection.getMultipleAccountsInfo([fromAccount, toAccount], 'finalized'),
-		solanaConnection.getMinimumBalanceForRentExemption(STATE_SIZE),
-		decideRelayer(),
-	])
+	const [[fromAccountData, toAccountData], stateRent, relayer] =
+		await Promise.all([
+			solanaConnection.getMultipleAccountsInfo(
+				[fromAccount, toAccount],
+				'finalized'
+			),
+			solanaConnection.getMinimumBalanceForRentExemption(STATE_SIZE),
+			decideRelayer(),
+		]);
 
 	if (!fromAccountData || fromAccountData.data.length === 0) {
-		instructions.push(createAssociatedTokenAccountInstruction(
-			swapper, fromAccount, swapper, fromMint
-		));
+		instructions.push(
+			createAssociatedTokenAccountInstruction(
+				swapper,
+				fromAccount,
+				swapper,
+				fromMint
+			)
+		);
 	}
 
-
 	if (!toAccountData || toAccountData.data.length === 0) {
-		instructions.push(createAssociatedTokenAccountInstruction(
-			swapper, toAccount, state, fromMint
-		));
+		instructions.push(
+			createAssociatedTokenAccountInstruction(
+				swapper,
+				toAccount,
+				state,
+				fromMint
+			)
+		);
 	}
 
 	if (quote.fromToken.contract === ZeroAddress) {
-		instructions.push(SystemProgram.transfer({
-			fromPubkey: swapper,
-			toPubkey: fromAccount,
-			lamports: BigInt(quote.effectiveAmountIn64),
-		}));
+		instructions.push(
+			SystemProgram.transfer({
+				fromPubkey: swapper,
+				toPubkey: fromAccount,
+				lamports: BigInt(quote.effectiveAmountIn64),
+			})
+		);
 		instructions.push(createSyncNativeInstruction(fromAccount));
 	}
 
 	const amount = BigInt(quote.effectiveAmountIn64);
 
 	const delegate = Keypair.generate();
-	instructions.push(createApproveInstruction(
-		fromAccount, delegate.publicKey, swapper, amount
-	));
+	instructions.push(
+		createApproveInstruction(fromAccount, delegate.publicKey, swapper, amount)
+	);
 
-
-	instructions.push(SystemProgram.transfer({
-		fromPubkey: swapper,
-		toPubkey: delegate.publicKey,
-		lamports: stateRent,
-	}));
+	instructions.push(
+		SystemProgram.transfer({
+			fromPubkey: swapper,
+			toPubkey: delegate.publicKey,
+			lamports: stateRent,
+		})
+	);
 
 	const swapKeys: Array<AccountMeta> = [
-		{pubkey: delegate.publicKey, isWritable: false, isSigner: true},
-		{pubkey: msg1.publicKey, isWritable: false, isSigner: true},
-		{pubkey: msg2.publicKey, isWritable: false, isSigner: true},
-		{pubkey: state, isWritable: true, isSigner: false},
-		{pubkey: fromAccount, isWritable: true, isSigner: false},
-		{pubkey: swapper, isWritable: false, isSigner: false},
-		{pubkey: toAccount, isWritable: true, isSigner: false},
-		{pubkey: fromMint, isWritable: false, isSigner: false},
-		{pubkey: toMint, isWritable: false, isSigner: false},
-		{pubkey: auctionAddr, isWritable: false, isSigner: false},
-		{pubkey: referrerAddr, isWritable: false, isSigner: false},
-		{pubkey: mayanFee, isWritable: false, isSigner: false},
-		{pubkey: referrerFee, isWritable: false, isSigner: false},
-		{pubkey: delegate.publicKey, isWritable: true, isSigner: true},
-		{pubkey: relayer, isWritable: false, isSigner: false},
-		{pubkey: SYSVAR_CLOCK_PUBKEY, isWritable: false, isSigner: false},
-		{pubkey: SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false},
-		{pubkey: tokenProgram, isWritable: false, isSigner: false},
-		{pubkey: SystemProgram.programId, isWritable: false, isSigner: false},
+		{ pubkey: delegate.publicKey, isWritable: false, isSigner: true },
+		{ pubkey: msg1.publicKey, isWritable: false, isSigner: true },
+		{ pubkey: msg2.publicKey, isWritable: false, isSigner: true },
+		{ pubkey: state, isWritable: true, isSigner: false },
+		{ pubkey: fromAccount, isWritable: true, isSigner: false },
+		{ pubkey: swapper, isWritable: false, isSigner: false },
+		{ pubkey: toAccount, isWritable: true, isSigner: false },
+		{ pubkey: fromMint, isWritable: false, isSigner: false },
+		{ pubkey: toMint, isWritable: false, isSigner: false },
+		{ pubkey: auctionAddr, isWritable: false, isSigner: false },
+		{ pubkey: referrerAddr, isWritable: false, isSigner: false },
+		{ pubkey: mayanFee, isWritable: false, isSigner: false },
+		{ pubkey: referrerFee, isWritable: false, isSigner: false },
+		{ pubkey: delegate.publicKey, isWritable: true, isSigner: true },
+		{ pubkey: relayer, isWritable: false, isSigner: false },
+		{ pubkey: SYSVAR_CLOCK_PUBKEY, isWritable: false, isSigner: false },
+		{ pubkey: SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false },
+		{ pubkey: tokenProgram, isWritable: false, isSigner: false },
+		{ pubkey: SystemProgram.programId, isWritable: false, isSigner: false },
 	];
 
 	const destinationChainId = getWormholeChainIdByName(quote.toChain);
 
-	if (destinationChainId === 1) { //destination address safety check!
-		const destinationAccount =
-			await solanaConnection.getAccountInfo(new PublicKey(destinationAddress));
-		if (destinationAccount && destinationAccount.owner &&
-			destinationAccount.owner.equals(tokenProgram)) {
+	if (destinationChainId === 1) {
+		//destination address safety check!
+		const destinationAccount = await solanaConnection.getAccountInfo(
+			new PublicKey(destinationAddress)
+		);
+		if (
+			destinationAccount &&
+			destinationAccount.owner &&
+			destinationAccount.owner.equals(tokenProgram)
+		) {
 			throw new Error(
 				'Destination address is not about token account.' +
-				' It should be a owner address'
+					' It should be a owner address'
 			);
 		}
 	}
@@ -223,21 +266,28 @@ export async function createSwapFromSolanaInstructions(
 	);
 
 	const minAmountOut = getAmountOfFractionalAmount(
-		quote.minAmountOut, quote.mintDecimals.to);
+		quote.minAmountOut,
+		quote.mintDecimals.to
+	);
 	const feeSwap = getAmountOfFractionalAmount(
-		quote.swapRelayerFee, quote.mintDecimals.from);
+		quote.swapRelayerFee,
+		quote.mintDecimals.from
+	);
 	const feeReturn = getAmountOfFractionalAmount(
-		quote.redeemRelayerFee, quote.mintDecimals.to);
+		quote.redeemRelayerFee,
+		quote.mintDecimals.to
+	);
 	const feeCancel = getAmountOfFractionalAmount(
-		quote.refundRelayerFee, quote.mintDecimals.from);
+		quote.refundRelayerFee,
+		quote.mintDecimals.from
+	);
 	const gasDrop = getAmountOfFractionalAmount(
-		quote.gasDrop, getGasDecimalsInSolana(quote.toChain));
+		quote.gasDrop,
+		getGasDecimalsInSolana(quote.toChain)
+	);
 
-	const unwrapRedeem =
-		quote.toToken.contract === ZeroAddress;
-	const unwrapRefund =
-		quote.fromToken.contract === ZeroAddress;
-
+	const unwrapRedeem = quote.toToken.contract === ZeroAddress;
+	const unwrapRefund = quote.fromToken.contract === ZeroAddress;
 
 	if (!Number(quote.deadline64)) {
 		throw new Error('Deadline is not valid');
@@ -261,7 +311,7 @@ export async function createSwapFromSolanaInstructions(
 		unwrapRefund: unwrapRefund ? 1 : 0,
 		mayanFeeNonce,
 		referrerFeeNonce,
-	}
+	};
 	SwapLayout.encode(swapFields, swapData);
 	const swapInstruction = new TransactionInstruction({
 		keys: swapKeys,
@@ -279,7 +329,9 @@ export async function createSwapFromSolanaInstructions(
 }
 
 export async function swapFromSolana(
-	quote: Quote, swapperWalletAddress: string, destinationAddress: string,
+	quote: Quote,
+	swapperWalletAddress: string,
+	destinationAddress: string,
 	referrerAddresses: ReferrerAddresses | null | undefined,
 	signTransaction: SolanaTransactionSigner,
 	connection?: Connection,
@@ -287,42 +339,44 @@ export async function swapFromSolana(
 	sendOptions?: SendOptions,
 	jitoOptions?: JitoBundleOptions,
 	instructionOptions?: {
-		allowSwapperOffCurve?: boolean,
-		forceSkipCctpInstructions?: boolean,
+		allowSwapperOffCurve?: boolean;
+		forceSkipCctpInstructions?: boolean;
 	}
 ): Promise<{
-	signature: string,
-	serializedTrx: Uint8Array | null,
+	signature: string;
+	serializedTrx: Uint8Array | null;
 }> {
-	const solanaConnection = connection ??
-		new Connection('https://rpc.ankr.com/solana');
+	const solanaConnection =
+		connection ?? new Connection('https://rpc.ankr.com/solana');
 
 	const jitoEnabled = !!(
 		!quote.gasless &&
 		jitoOptions &&
-		jitoOptions.tipLamports > 0  &&
+		jitoOptions.tipLamports > 0 &&
 		jitoOptions.signAllTransactions
 	);
 
-	const {
-		instructions,
-		signers,
-		lookupTables,
-		swapMessageV0Params,
-	} = await createSwapFromSolanaInstructions(
-		quote, swapperWalletAddress, destinationAddress,
-		referrerAddresses, connection, {
-			allowSwapperOffCurve: instructionOptions?.allowSwapperOffCurve,
-			forceSkipCctpInstructions: instructionOptions?.forceSkipCctpInstructions,
-			separateSwapTx: jitoEnabled && jitoOptions?.separateSwapTx,
-		}
-	);
+	const { instructions, signers, lookupTables, swapMessageV0Params } =
+		await createSwapFromSolanaInstructions(
+			quote,
+			swapperWalletAddress,
+			destinationAddress,
+			referrerAddresses,
+			connection,
+			{
+				allowSwapperOffCurve: instructionOptions?.allowSwapperOffCurve,
+				forceSkipCctpInstructions:
+					instructionOptions?.forceSkipCctpInstructions,
+				separateSwapTx: jitoEnabled && jitoOptions?.separateSwapTx,
+			}
+		);
 
 	const swapper = new PublicKey(swapperWalletAddress);
 
 	const feePayer = quote.gasless ? new PublicKey(quote.relayer) : swapper;
 
-	const {blockhash, lastValidBlockHeight} = await connection.getLatestBlockhash();
+	const { blockhash, lastValidBlockHeight } =
+		await connection.getLatestBlockhash();
 	const message = MessageV0.compile({
 		instructions,
 		payerKey: feePayer,
@@ -348,16 +402,29 @@ export async function swapFromSolana(
 			});
 			allTransactions.push(new VersionedTransaction(swapMessage));
 		}
-		const jitoTipTransfer = getJitoTipTransfer(swapperWalletAddress, blockhash, lastValidBlockHeight, jitoOptions);
+		const jitoTipTransfer = getJitoTipTransfer(
+			swapperWalletAddress,
+			blockhash,
+			lastValidBlockHeight,
+			jitoOptions
+		);
 		allTransactions.push(transaction);
 		allTransactions.push(jitoTipTransfer);
 		const signedTrxs = await jitoOptions.signAllTransactions(allTransactions);
 		signedTrx = signedTrxs[signedTrxs.length - 2];
 		let mayanTxHash = null;
-		if (signedTrx instanceof Transaction && signedTrx?.signatures[0]?.publicKey) {
-			mayanTxHash = bs58.encode(Uint8Array.from(signedTrx.signatures[0].signature));
-		} else if (signedTrx instanceof VersionedTransaction && signedTrx?.signatures[0]) {
-			mayanTxHash = bs58.encode(Uint8Array.from(signedTrx.signatures[0]));
+		if (
+			signedTrx instanceof Transaction &&
+			signedTrx?.signatures[0]?.publicKey
+		) {
+			mayanTxHash = encodeBase58(
+				Uint8Array.from(signedTrx.signatures[0].signature)
+			);
+		} else if (
+			signedTrx instanceof VersionedTransaction &&
+			signedTrx?.signatures[0]
+		) {
+			mayanTxHash = encodeBase58(Uint8Array.from(signedTrx.signatures[0]));
 		}
 
 		if (mayanTxHash === null) {
@@ -366,7 +433,13 @@ export async function swapFromSolana(
 
 		if (swapMessageV0Params) {
 			const jitoBundleId = await sendJitoBundle(signedTrxs, jitoOptions, true);
-			await confirmJitoBundleId(jitoBundleId, jitoOptions, lastValidBlockHeight, mayanTxHash, connection);
+			await confirmJitoBundleId(
+				jitoBundleId,
+				jitoOptions,
+				lastValidBlockHeight,
+				mayanTxHash,
+				connection
+			);
 			broadcastJitoBundleId(jitoBundleId);
 			return {
 				signature: mayanTxHash,
@@ -374,7 +447,9 @@ export async function swapFromSolana(
 			};
 		} else {
 			sendJitoBundle(signedTrxs, jitoOptions)
-				.then(() => { console.log('Jito bundle sent') })
+				.then(() => {
+					console.log('Jito bundle sent');
+				})
 				.catch(() => {});
 		}
 	} else {
@@ -394,4 +469,3 @@ export async function swapFromSolana(
 		options: sendOptions,
 	});
 }
-
